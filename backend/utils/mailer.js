@@ -2,37 +2,34 @@ const https = require("https");
 const nodemailer = require("nodemailer");
 
 function buildHtml({ donorName, amount, campaignTitle, paymentId }) {
+  const date = new Date().toLocaleDateString("en-IN", { day: "numeric", month: "long", year: "numeric" });
   return `
-    <div style="font-family: 'Georgia', serif; max-width: 600px; margin: 0 auto; background: #fffbeb; border: 1px solid #f59e0b; border-radius: 12px; overflow: hidden;">
-      <div style="background: linear-gradient(135deg, #92400e, #b45309); padding: 24px; text-align: center;">
-        <h1 style="color: #fef3c7; margin: 0; font-size: 22px;">🙏 Hare Krishna, ${donorName}!</h1>
-        <p style="color: #fde68a; margin: 8px 0 0; font-size: 14px;">Thank you for your generous donation</p>
+    <div style="font-family: Arial, sans-serif; max-width: 500px; margin: 0 auto; background: #fffbeb; border: 1px solid #f59e0b; border-radius: 12px; overflow: hidden;">
+      <div style="background: linear-gradient(135deg, #D35400, #E67E22); padding: 20px; text-align: center;">
+        <h1 style="color: #fff; margin: 0; font-size: 20px;">🙏 Hare Krishna, ${donorName}!</h1>
+        <p style="color: #fff; opacity: 0.8; margin: 6px 0 0; font-size: 13px;">Thank you for your generous donation</p>
       </div>
-      <div style="padding: 24px;">
-        <p style="color: #78350f; font-size: 15px; line-height: 1.6;">
-          We are grateful for your kind contribution to <strong>${campaignTitle}</strong> at ISKCON Ujjain.
+      <div style="padding: 20px;">
+        <p style="color: #5D6D7E; font-size: 14px; line-height: 1.6; margin: 0 0 16px;">
+          We are grateful for your kind contribution to <strong style="color: #7B241C;">${campaignTitle}</strong> at ISKCON Ujjain.
           May Lord Krishna bless you abundantly for your seva.
         </p>
-        <div style="background: white; border: 1px solid #fbbf24; border-radius: 8px; padding: 16px; margin: 20px 0;">
-          <h3 style="color: #92400e; margin: 0 0 12px; font-size: 16px;">Donation Details</h3>
-          <table style="width: 100%; font-size: 14px; color: #78350f;">
-            <tr><td style="padding: 6px 0; font-weight: bold;">Donor Name</td><td style="text-align: right;">${donorName}</td></tr>
-            <tr><td style="padding: 6px 0; font-weight: bold;">Amount</td><td style="text-align: right; font-size: 18px; color: #b45309; font-weight: bold;">₹${amount.toLocaleString("en-IN")}</td></tr>
-            <tr><td style="padding: 6px 0; font-weight: bold;">Campaign</td><td style="text-align: right;">${campaignTitle}</td></tr>
-            <tr><td style="padding: 6px 0; font-weight: bold;">Payment ID</td><td style="text-align: right; font-size: 12px;">${paymentId}</td></tr>
-            <tr><td style="padding: 6px 0; font-weight: bold;">Date</td><td style="text-align: right;">${new Date().toLocaleDateString("en-IN", { day: "numeric", month: "long", year: "numeric" })}</td></tr>
-          </table>
+        <div style="background: #fff; border: 1px solid #E8DCCF; border-radius: 8px; padding: 14px; margin: 0 0 16px;">
+          <p style="color: #7B241C; font-weight: bold; font-size: 14px; margin: 0 0 10px;">Donation Details</p>
+          <p style="margin: 0; padding: 5px 0; font-size: 13px; color: #5D6D7E; border-bottom: 1px solid #f0e8dd;"><strong>Donor:</strong> ${donorName}</p>
+          <p style="margin: 0; padding: 5px 0; font-size: 13px; color: #5D6D7E; border-bottom: 1px solid #f0e8dd;"><strong>Amount:</strong> <span style="color: #D35400; font-size: 16px; font-weight: bold;">₹${amount.toLocaleString("en-IN")}</span></p>
+          <p style="margin: 0; padding: 5px 0; font-size: 13px; color: #5D6D7E; border-bottom: 1px solid #f0e8dd;"><strong>Campaign:</strong> ${campaignTitle}</p>
+          <p style="margin: 0; padding: 5px 0; font-size: 11px; color: #5D6D7E; border-bottom: 1px solid #f0e8dd; word-break: break-all;"><strong>Payment ID:</strong> ${paymentId}</p>
+          <p style="margin: 0; padding: 5px 0; font-size: 13px; color: #5D6D7E;"><strong>Date:</strong> ${date}</p>
         </div>
-        <p style="color: #92400e; font-style: italic; font-size: 13px; text-align: center; margin: 20px 0; line-height: 1.5;">
-          "If you simply give some contribution to spreading this Krishna consciousness movement,<br/>
-          you get a permanent credit. It will never be lost."<br/>
-          <strong>— Srila Prabhupada</strong>
+        <p style="color: #7B241C; font-style: italic; font-size: 12px; text-align: center; margin: 0; line-height: 1.5;">
+          "If you simply give some contribution to spreading this Krishna consciousness movement, you get a permanent credit."
+          <br/><strong>— Srila Prabhupada</strong>
         </p>
       </div>
-      <div style="background: #92400e; padding: 16px; text-align: center; color: #fde68a; font-size: 12px;">
+      <div style="background: #7B241C; padding: 12px; text-align: center; color: #FADBD8; font-size: 11px;">
         <p style="margin: 0;">ISKCON Ujjain · Sri Sri Radha Madanmohan Mandir</p>
-        <p style="margin: 4px 0 0;">35–37 Hare Krishna Land, Bharatpuri, Ujjain, MP – 456010</p>
-        <p style="margin: 4px 0 0;">📞 +91 76929 32955 · ✉️ info@iskconujjain.com</p>
+        <p style="margin: 3px 0 0;">📞 +91 76929 32955 · ✉️ info@iskconujjain.com</p>
       </div>
     </div>
   `;
