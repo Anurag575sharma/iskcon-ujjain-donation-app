@@ -1,9 +1,15 @@
-import { BrowserRouter, Routes, Route, useNavigate, useParams, Navigate } from "react-router-dom";
+import { BrowserRouter, Routes, Route, useNavigate, useParams, Navigate, useLocation } from "react-router-dom";
 import { useState, useEffect } from "react";
 import Home from "./pages/Home";
 import CampaignDetail from "./pages/CampaignDetail";
 import CreateCampaign from "./pages/CreateCampaign";
 import ThankYou from "./pages/ThankYou";
+
+function ScrollToTop() {
+  const { pathname } = useLocation();
+  useEffect(() => { window.scrollTo(0, 0); }, [pathname]);
+  return null;
+}
 
 const LOGO = "https://res.cloudinary.com/dqomft1xi/image/upload/v1776576409/iskcon-campaigns/bmetkjq2rhokxjuoysnz.jpg";
 
@@ -131,6 +137,7 @@ function ThankYouPage() {
 function App() {
   return (
     <BrowserRouter>
+      <ScrollToTop />
       <Routes>
         <Route path="/" element={<HomePage />} />
         <Route path="/campaign/:id" element={<CampaignPage />} />

@@ -142,10 +142,11 @@ export default function CampaignDetail({ id, onBack }) {
           <div className="p-4 sm:p-6 space-y-5">
             <p className="text-[#5D6D7E] leading-relaxed whitespace-pre-line"
               dangerouslySetInnerHTML={{
-                __html: campaign.description.replace(
-                  /(https?:\/\/[^\s<]+)/g,
-                  '<a href="$1" target="_blank" rel="noopener noreferrer" style="color:#D35400;text-decoration:underline;word-break:break-all;">$1</a>'
-                )
+                __html: campaign.description
+                  .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
+                  .replace(/\*\*(.+?)\*\*/g, '<strong style="color:#7B241C;">$1</strong>')
+                  .replace(/\*(.+?)\*/g, '<em>$1</em>')
+                  .replace(/(https?:\/\/[^\s<]+)/g, '<a href="$1" target="_blank" rel="noopener noreferrer" style="color:#D35400;text-decoration:underline;word-break:break-all;">$1</a>')
               }}
             />
 
@@ -300,15 +301,15 @@ export default function CampaignDetail({ id, onBack }) {
 
       {/* UPI/QR Modal */}
       {showQr && (
-        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" onClick={() => setShowQr(false)}>
-          <div className="bg-white rounded-2xl max-w-sm w-full p-6 space-y-4 animate-fade-up" onClick={(e) => e.stopPropagation()}>
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-start sm:items-center justify-center p-4 overflow-y-auto" onClick={() => setShowQr(false)}>
+          <div className="bg-white rounded-2xl max-w-sm w-full p-4 sm:p-6 space-y-3 animate-fade-up my-4 sm:my-8" onClick={(e) => e.stopPropagation()}>
             <div className="text-center">
-              <h3 className="text-lg font-serif font-bold text-[#7B241C]">Pay via UPI</h3>
-              <p className="text-[#5D6D7E] text-sm mt-1">Scan QR or use UPI ID to pay <span className="font-bold text-[#D35400]">₹{Number(amount).toLocaleString("en-IN")}</span></p>
+              <h3 className="text-base sm:text-lg font-serif font-bold text-[#7B241C]">Pay via UPI</h3>
+              <p className="text-[#5D6D7E] text-xs sm:text-sm mt-1">Scan QR or use UPI ID to pay <span className="font-bold text-[#D35400]">₹{Number(amount).toLocaleString("en-IN")}</span></p>
             </div>
 
             {upiDetails.qrImage && (
-              <img src={upiDetails.qrImage} alt="UPI QR Code" className="w-48 h-48 mx-auto rounded-xl border border-[#E8DCCF]" />
+              <img src={upiDetails.qrImage} alt="UPI QR Code" className="w-36 h-36 sm:w-48 sm:h-48 mx-auto rounded-xl border border-[#E8DCCF]" />
             )}
 
             {upiDetails.upiId && (
