@@ -39,6 +39,48 @@ function cashfreeRequest(method, path, body) {
   });
 }
 
+// Record UPI/QR donation (public — auto-recorded when user clicks pay)
+router.post("/record-upi-donation", async (req, res) => {
+  try {
+    const { campaignId, donorName, donorEmail, amount } = req.body;
+
+    if (!donorName || !campaignId) return res.status(400).json({ error: "Name and campaign are required." });
+    if (!amount || amount < 1 || amount > 10000000) return res.status(400).json({ error: "Invalid amount." });
+    if (typeof donorName !== "string" || donorName.length > 100) return res.status(400).json({ error: "Invalid name." });
+
+    const safeName = donorName.replace(/<[^>]*>/g, "").trim();
+
+    const campaign = await Campaign.findById(campaignId);
+    if (!campaign) return res.status(404).json({ error: "Campaign not found." });
+
+    await Donation.create({
+      campaignId,
+      donorName: safeName,
+      donorEmail: donorEmail || "",
+      amount: Number(amount),
+      orderId: `upi_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
+      paymentId: "upi",
+      status: "paid",
+    });
+
+    await Campaign.findByIdAndUpdate(campaignId, { $inc: { collectedAmount: Number(amount) } });
+
+    if (donorEmail) {
+      sendDonationReceipt({
+        donorName: safeName,
+        donorEmail,
+        amount: Number(amount),
+        campaignTitle: campaign.title,
+        paymentId: "UPI Payment",
+      });
+    }
+
+    res.json({ message: "Donation recorded." });
+  } catch (err) {
+    res.status(500).json({ error: "Something went wrong." });
+  }
+});
+
 // Create Cashfree order
 router.post("/create-order", async (req, res) => {
   try {
@@ -86,7 +128,7 @@ router.post("/create-order", async (req, res) => {
 
     res.json({ orderId: oid, paymentSessionId: cfOrder.payment_session_id, amount });
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    res.status(500).json({ error: "Something went wrong." });
   }
 });
 
@@ -133,7 +175,7 @@ router.post("/verify-payment", async (req, res) => {
 
     res.json({ message: "Payment verified successfully", emailSent: !!donation.donorEmail });
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    res.status(500).json({ error: "Something went wrong." });
   }
 });
 
@@ -149,7 +191,7 @@ router.get("/donors/:campaignId", async (req, res) => {
     ]);
     res.json(donors);
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    res.status(500).json({ error: "Something went wrong." });
   }
 });
 
@@ -167,7 +209,7 @@ router.get("/recent-donations", async (req, res) => {
       .populate("campaignId", "title");
     res.json(donations);
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    res.status(500).json({ error: "Something went wrong." });
   }
 });
 
@@ -189,7 +231,7 @@ router.get("/stats", async (req, res) => {
     const stats = result[0] || { totalAmount: 0, totalDonors: 0 };
     res.json({ totalAmount: stats.totalAmount, totalDonors: stats.totalDonors });
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    res.status(500).json({ error: "Something went wrong." });
   }
 });
 

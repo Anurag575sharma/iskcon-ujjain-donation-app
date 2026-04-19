@@ -27,7 +27,7 @@ function buildHtml({ donorName, amount, campaignTitle, paymentId }) {
         </p>
       </div>
       <div style="background: #7B241C; padding: 12px; text-align: center; color: #FADBD8; font-size: 11px;">
-        <p style="margin: 0;">Inspire MANIT · Bhopal, MP</p>
+        <p style="margin: 0;">Inspire HELP · Bhopal, MP</p>
         <p style="margin: 3px 0 0;">📞 +91 76929 32955 · ✉️ inspiremanit@gmail.com</p>
       </div>
     </div>
@@ -47,7 +47,7 @@ async function sendDonationReceipt({ donorName, donorEmail, amount, campaignTitl
     });
 
     await transporter.sendMail({
-      from: `"Inspire MANIT" <${process.env.EMAIL_USER}>`,
+      from: `"Inspire HELP" <${process.env.EMAIL_USER}>`,
       to: donorEmail,
       subject: `🙏 Hare Krishna! Donation Receipt – ₹${amount.toLocaleString("en-IN")}`,
       html: buildHtml({ donorName, amount, campaignTitle, paymentId }),

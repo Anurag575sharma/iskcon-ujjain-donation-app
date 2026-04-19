@@ -9,8 +9,10 @@ export default function ThankYou() {
   const campaignId = searchParams.get("campaign_id");
   const [status, setStatus] = useState("verifying");
   const [emailSent, setEmailSent] = useState(false);
+  const [form80gUrl, setForm80gUrl] = useState("");
 
   useEffect(() => {
+    api.get("/settings/payment-mode").then(({ data }) => setForm80gUrl(data.form80gUrl || "")).catch(() => {});
     if (!orderId) { setStatus("error"); return; }
 
     api.post("/verify-payment", { orderId })
@@ -80,6 +82,18 @@ export default function ThankYou() {
           Explore Campaigns
         </button>
       </div>
+
+      {/* 80G Tax Receipt */}
+      {form80gUrl && (
+        <div className="mt-6 bg-white rounded-2xl p-4 border border-[#E8DCCF]">
+          <p className="text-sm text-[#5D6D7E] mb-2">Want a tax exemption receipt under 80G?</p>
+          <a href={form80gUrl}
+            target="_blank" rel="noopener noreferrer"
+            className="inline-flex items-center gap-2 px-5 py-2.5 text-sm font-medium text-[#7B241C] bg-[#FDF2E9] hover:bg-[#FADBD8] rounded-full border border-[#E8DCCF] transition-all">
+            🏛️ Get 80G Tax Receipt
+          </a>
+        </div>
+      )}
     </div>
   );
 }

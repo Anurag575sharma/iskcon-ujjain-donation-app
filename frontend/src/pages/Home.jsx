@@ -106,7 +106,7 @@ export default function Home({ onSelect }) {
               <button key={c._id} onClick={() => onSelect(c._id)}
                 className="bg-white rounded-2xl shadow-sm hover:shadow-xl transition-all duration-500 text-left overflow-hidden group border border-[#E8DCCF] hover:-translate-y-1">
                 <div className="relative overflow-hidden">
-                  <img src={c.image} alt={c.title} className="w-full h-48 object-cover group-hover:scale-110 transition-transform duration-700"
+                  <img src={c.images?.[0] || c.image} alt={c.title} className="w-full h-48 object-cover group-hover:scale-110 transition-transform duration-700"
                     onError={(e) => { e.target.src = "https://placehold.co/800x400/FDF2E9/D35400?text=🙏"; }} />
                   <div className="absolute inset-0 bg-gradient-to-t from-black/50 via-black/10 to-transparent" />
                   <div className="absolute bottom-3 left-3 right-3 flex justify-between items-end">

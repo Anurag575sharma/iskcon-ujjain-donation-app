@@ -12,21 +12,47 @@ export default function CampaignDetail({ id, onBack }) {
   const [amount, setAmount] = useState("");
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState("");
+  const [isAnonymous, setIsAnonymous] = useState(false);
+  const [paymentMode, setPaymentMode] = useState("cashfree");
+  const [upiDetails, setUpiDetails] = useState({ upiId: "", qrImage: "", whatsappNo: "" });
+  const [showQr, setShowQr] = useState(false);
+  const [slideIndex, setSlideIndex] = useState(0);
 
   const fetchCampaign = () => api.get(`/campaign/${id}`)
     .then(({ data }) => setCampaign(data))
     .catch(() => setCampaign("not_found"));
   const fetchDonors = () => api.get(`/donors/${id}`).then(({ data }) => setDonors(data));
-  useEffect(() => { fetchCampaign(); fetchDonors(); }, [id]);
+  const fetchPaymentMode = () => api.get("/settings/payment-mode").then(({ data }) => {
+    setPaymentMode(data.mode);
+    setUpiDetails({ upiId: data.upiId, qrImage: data.qrImage, whatsappNo: data.whatsappNo });
+  });
+  useEffect(() => { fetchCampaign(); fetchDonors(); fetchPaymentMode(); }, [id]);
 
   const handleDonate = async () => {
-    if (!donorName.trim()) { setMessage("Please enter your name."); return; }
+    if (!isAnonymous && !donorName.trim()) { setMessage("Please enter your name or check Anonymous."); return; }
     const val = Number(amount);
     if (!val || val < 1) { setMessage("Enter a valid amount (min ₹1)."); return; }
+
+    const finalName = isAnonymous ? "Anonymous" : donorName.trim();
+
+    if (paymentMode === "upi") {
+      // Auto-record donation and show QR
+      try {
+        await api.post("/record-upi-donation", {
+          campaignId: id, donorName: finalName, donorEmail: donorEmail.trim(), amount: val,
+        });
+        setShowQr(true);
+        fetchCampaign(); fetchDonors();
+      } catch (err) {
+        setMessage(err?.response?.data?.error || "Something went wrong.");
+      }
+      return;
+    }
+
     setLoading(true); setMessage("");
     try {
       const { data: order } = await api.post("/create-order", {
-        amount: val, campaignId: id, donorName: donorName.trim(), donorEmail: donorEmail.trim(),
+        amount: val, campaignId: id, donorName: finalName, donorEmail: donorEmail.trim(),
       });
 
       const cashfree = window.Cashfree({
@@ -37,8 +63,6 @@ export default function CampaignDetail({ id, onBack }) {
         paymentSessionId: order.paymentSessionId,
         redirectTarget: "_self",
       });
-
-      // After redirect back, verify payment
     } catch (err) {
       setMessage(err?.response?.data?.error || "Something went wrong. Please try again.");
     }
@@ -66,6 +90,7 @@ export default function CampaignDetail({ id, onBack }) {
   const isCompleted = campaign.collectedAmount >= campaign.targetAmount;
 
   return (
+    <>
     <div className="animate-fade-up">
       <button onClick={onBack} className="text-[#D35400] mb-5 hover:text-[#7B241C] flex items-center gap-2 transition-colors group">
         <span className="bg-[#FDF2E9] group-hover:bg-[#FADBD8] w-7 h-7 rounded-full flex items-center justify-center transition-colors">←</span>
@@ -74,11 +99,32 @@ export default function CampaignDetail({ id, onBack }) {
 
       <div className="max-w-xl mx-auto space-y-6">
         <div className="bg-white rounded-3xl shadow-xl overflow-hidden border border-[#E8DCCF]">
-          <div className="relative h-64">
-            <img src={campaign.image} alt={campaign.title} className="w-full h-full object-cover"
-              onError={(e) => { e.target.src = "https://placehold.co/800x400/FDF2E9/D35400?text=🙏"; }} />
-            <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/20 to-transparent" />
-            <h1 className="absolute bottom-5 left-6 right-6 text-2xl font-serif font-bold text-white drop-shadow-lg leading-tight tracking-wide">{campaign.title}</h1>
+          {(() => {
+            const allImages = campaign.images?.length ? campaign.images : [campaign.image];
+            return (
+              <div className="relative h-64 sm:h-72 bg-black">
+                <img src={allImages[slideIndex] || campaign.image} alt={campaign.title} className="w-full h-full object-contain"
+                  onError={(e) => { e.target.src = "https://placehold.co/800x400/FDF2E9/D35400?text=🙏"; }} />
+                <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/20 to-transparent" />
+                <h1 className="absolute bottom-5 left-6 right-6 text-2xl font-serif font-bold text-white drop-shadow-lg leading-tight tracking-wide">{campaign.title}</h1>
+
+                {allImages.length > 1 && (
+                  <>
+                    <button onClick={() => setSlideIndex((i) => (i - 1 + allImages.length) % allImages.length)}
+                      className="absolute left-3 top-1/2 -translate-y-1/2 w-8 h-8 bg-black/30 hover:bg-black/50 text-white rounded-full flex items-center justify-center transition-all backdrop-blur-sm">‹</button>
+                    <button onClick={() => setSlideIndex((i) => (i + 1) % allImages.length)}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 w-8 h-8 bg-black/30 hover:bg-black/50 text-white rounded-full flex items-center justify-center transition-all backdrop-blur-sm">›</button>
+                    <div className="absolute bottom-14 left-1/2 -translate-x-1/2 flex gap-1.5">
+                      {allImages.map((_, i) => (
+                        <button key={i} onClick={() => setSlideIndex(i)}
+                          className={`w-2 h-2 rounded-full transition-all ${i === slideIndex ? "bg-white w-4" : "bg-white/50"}`} />
+                      ))}
+                    </div>
+                  </>
+                )}
+              </div>
+            );
+          })()}
           </div>
 
           <div className="p-4 sm:p-6 space-y-5">
@@ -113,11 +159,18 @@ export default function CampaignDetail({ id, onBack }) {
             ) : (
               <div className="space-y-4">
                 <div className="space-y-3">
-                  <div className="relative">
-                    <span className="absolute left-4 top-1/2 -translate-y-1/2 text-[#D35400]/50">👤</span>
-                    <input type="text" placeholder="Your name" value={donorName} onChange={(e) => setDonorName(e.target.value)}
-                      className="w-full pl-11 pr-4 py-3 border border-[#E8DCCF] rounded-xl bg-white focus:outline-none focus:ring-2 focus:ring-[#D35400] focus:border-transparent placeholder-[#BDC3C7] transition-all" />
-                  </div>
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <input type="checkbox" checked={isAnonymous} onChange={(e) => { setIsAnonymous(e.target.checked); if (e.target.checked) setDonorName(""); }}
+                      className="w-4 h-4 rounded border-[#E8DCCF] text-[#D35400] focus:ring-[#D35400]" />
+                    <span className="text-sm text-[#5D6D7E]">Donate Anonymously</span>
+                  </label>
+                  {!isAnonymous && (
+                    <div className="relative">
+                      <span className="absolute left-4 top-1/2 -translate-y-1/2 text-[#D35400]/50">👤</span>
+                      <input type="text" placeholder="Your name" value={donorName} onChange={(e) => setDonorName(e.target.value)}
+                        className="w-full pl-11 pr-4 py-3 border border-[#E8DCCF] rounded-xl bg-white focus:outline-none focus:ring-2 focus:ring-[#D35400] focus:border-transparent placeholder-[#BDC3C7] transition-all" />
+                    </div>
+                  )}
                   <div className="relative">
                     <span className="absolute left-4 top-1/2 -translate-y-1/2 text-[#D35400]/50">✉️</span>
                     <input type="email" placeholder="Email – optional (for receipt)" value={donorEmail} onChange={(e) => setDonorEmail(e.target.value)}
@@ -172,7 +225,32 @@ export default function CampaignDetail({ id, onBack }) {
             <div className="pt-2 border-t border-[#E8DCCF]">
               <p className="text-xs text-[#5D6D7E] text-center mb-2 font-medium">Share this campaign</p>
               <div className="flex justify-center gap-3">
-                <button onClick={() => { const text = `🙏 Support "${campaign.title}" at Inspire MANIT Bhopal! Help here: ${window.location.href}`; window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, "_blank"); }}
+                <button onClick={() => {
+                  const raised = campaign.collectedAmount.toLocaleString("en-IN");
+                  const goal = campaign.targetAmount.toLocaleString("en-IN");
+                  const pct = Math.min((campaign.collectedAmount / campaign.targetAmount) * 100, 100).toFixed(0);
+                  const link = window.location.href;
+
+                  let text;
+                  if (campaign.shareMessage) {
+                    text = campaign.shareMessage
+                      .replace(/\{title\}/g, campaign.title)
+                      .replace(/\{link\}/g, link)
+                      .replace(/\{raised\}/g, `₹${raised}`)
+                      .replace(/\{goal\}/g, `₹${goal}`)
+                      .replace(/\{percent\}/g, `${pct}%`);
+                  } else {
+                    text = `🙏 *Hare Krishna!*\n\n` +
+                      `I'd like to share a wonderful seva opportunity with you.\n\n` +
+                      `*${campaign.title}*\n` +
+                      `${campaign.description.slice(0, 150)}${campaign.description.length > 150 ? "..." : ""}\n\n` +
+                      `📊 *₹${raised}* raised of ₹${goal} goal (${pct}%)\n\n` +
+                      `Every contribution counts. Please support this cause:\n` +
+                      `👉 ${link}\n\n` +
+                      `_"If you simply give some contribution to spreading this Krishna consciousness movement, you get a permanent credit."_ — Srila Prabhupada`;
+                  }
+                  window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, "_blank");
+                }}
                   className="flex items-center gap-1.5 px-4 py-2 bg-green-500 text-white text-sm font-medium rounded-full hover:bg-green-600 transition-all shadow-sm">💬 WhatsApp</button>
                 <button onClick={() => { navigator.clipboard.writeText(window.location.href); toast.success("Link copied!"); }}
                   className="flex items-center gap-1.5 px-4 py-2 bg-[#FDF2E9] text-[#D35400] text-sm font-medium rounded-full hover:bg-[#FADBD8] transition-all border border-[#E8DCCF]">🔗 Copy Link</button>
@@ -200,6 +278,49 @@ export default function CampaignDetail({ id, onBack }) {
           </div>
         )}
       </div>
-    </div>
+
+      {/* UPI/QR Modal */}
+      {showQr && (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" onClick={() => setShowQr(false)}>
+          <div className="bg-white rounded-2xl max-w-sm w-full p-6 space-y-4 animate-fade-up" onClick={(e) => e.stopPropagation()}>
+            <div className="text-center">
+              <h3 className="text-lg font-serif font-bold text-[#7B241C]">Pay via UPI</h3>
+              <p className="text-[#5D6D7E] text-sm mt-1">Scan QR or use UPI ID to pay <span className="font-bold text-[#D35400]">₹{Number(amount).toLocaleString("en-IN")}</span></p>
+            </div>
+
+            {upiDetails.qrImage && (
+              <img src={upiDetails.qrImage} alt="UPI QR Code" className="w-48 h-48 mx-auto rounded-xl border border-[#E8DCCF]" />
+            )}
+
+            {upiDetails.upiId && (
+              <div className="text-center">
+                <p className="text-xs text-[#5D6D7E] mb-1">UPI ID</p>
+                <div className="flex items-center justify-center gap-2">
+                  <code className="bg-[#FDF2E9] px-3 py-1.5 rounded-lg text-[#D35400] font-semibold text-sm">{upiDetails.upiId}</code>
+                  <button onClick={() => { navigator.clipboard.writeText(upiDetails.upiId); toast.success("UPI ID copied!"); }}
+                    className="text-xs text-[#D35400] hover:underline">Copy</button>
+                </div>
+              </div>
+            )}
+
+            <div className="bg-[#FDF2E9] rounded-xl p-3 text-center">
+              <p className="text-sm text-green-700 font-medium">✅ Your donation of ₹{Number(amount).toLocaleString("en-IN")} has been recorded</p>
+              <p className="text-xs text-[#5D6D7E] mt-1">After payment, send screenshot on WhatsApp for confirmation</p>
+            </div>
+
+            <a href={`https://wa.me/${upiDetails.whatsappNo || "917692932955"}?text=${encodeURIComponent(`🙏 Hare Krishna!\n\nI just donated ₹${Number(amount).toLocaleString("en-IN")} for "${campaign?.title}".\n\nName: ${isAnonymous ? "Anonymous" : donorName}\n\nAttaching payment screenshot.`)}`}
+              target="_blank" rel="noopener noreferrer"
+              className="w-full py-2.5 bg-green-500 hover:bg-green-600 text-white font-semibold rounded-xl flex items-center justify-center gap-2 transition-all">
+              💬 Send Screenshot on WhatsApp
+            </a>
+
+            <button onClick={() => setShowQr(false)}
+              className="w-full py-2.5 border-2 border-[#E8DCCF] text-[#5D6D7E] font-medium rounded-xl hover:bg-[#FDF2E9] transition-all">
+              Close
+            </button>
+          </div>
+        </div>
+      )}
+    </>
   );
 }

@@ -31,6 +31,7 @@ const orderLimiter = rateLimit({
   message: { error: "Please wait before trying again." },
 });
 app.use("/api/create-order", orderLimiter);
+app.use("/api/record-upi-donation", orderLimiter);
 app.use("/api/verify-payment", paymentLimiter);
 
 app.use(express.json());

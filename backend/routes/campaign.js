@@ -2,6 +2,7 @@ const express = require("express");
 const router = express.Router();
 const Campaign = require("../models/Campaign");
 const Donation = require("../models/Donation");
+const Settings = require("../models/Settings");
 const { upload, uploadToCloudinary } = require("../utils/cloudinary");
 
 // Get all visible campaigns (public) with donor counts
@@ -20,7 +21,7 @@ router.get("/campaigns", async (req, res) => {
     const result = campaigns.map((c) => ({ ...c, donorCount: countMap[c._id.toString()] || 0 }));
     res.json(result);
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    res.status(500).json({ error: "Something went wrong." });
   }
 });
 
@@ -33,7 +34,7 @@ router.get("/admin/campaigns", async (req, res) => {
     const campaigns = await Campaign.find().sort({ createdAt: -1 });
     res.json(campaigns);
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    res.status(500).json({ error: "Something went wrong." });
   }
 });
 
@@ -44,23 +45,23 @@ router.get("/campaign/:id", async (req, res) => {
     if (!campaign) return res.status(404).json({ error: "Campaign not found" });
     res.json(campaign);
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    res.status(500).json({ error: "Something went wrong." });
   }
 });
 
 // Create a new campaign (admin only)
 router.post("/campaign", async (req, res) => {
   try {
-    const { title, description, image, targetAmount, adminPassword } = req.body;
+    const { title, description, image, images, targetAmount, adminPassword } = req.body;
 
     if (adminPassword !== process.env.ADMIN_PASSWORD) {
       return res.status(401).json({ error: "Wrong admin password." });
     }
 
-    const campaign = await Campaign.create({ title, description, image, targetAmount });
+    const campaign = await Campaign.create({ title, description, image, images: images || [], targetAmount, shareMessage: req.body.shareMessage || "" });
     res.json(campaign);
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    res.status(500).json({ error: "Something went wrong." });
   }
 });
 
@@ -79,7 +80,7 @@ router.patch("/campaign/:id/toggle-hide", async (req, res) => {
     await campaign.save();
     res.json(campaign);
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    res.status(500).json({ error: "Something went wrong." });
   }
 });
 
@@ -96,14 +97,14 @@ router.delete("/campaign/:id", async (req, res) => {
 
     res.json({ message: "Campaign deleted." });
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    res.status(500).json({ error: "Something went wrong." });
   }
 });
 
 // Edit campaign (admin only)
 router.put("/campaign/:id", async (req, res) => {
   try {
-    const { adminPassword, title, description, image, targetAmount } = req.body;
+    const { adminPassword, title, description, image, images, targetAmount } = req.body;
     if (adminPassword !== process.env.ADMIN_PASSWORD) {
       return res.status(401).json({ error: "Wrong admin password." });
     }
@@ -112,14 +113,16 @@ router.put("/campaign/:id", async (req, res) => {
     if (title) updates.title = title;
     if (description) updates.description = description;
     if (image) updates.image = image;
+    if (images) updates.images = images;
     if (targetAmount) updates.targetAmount = Number(targetAmount);
+    if (req.body.shareMessage !== undefined) updates.shareMessage = req.body.shareMessage;
 
     const campaign = await Campaign.findByIdAndUpdate(req.params.id, updates, { new: true });
     if (!campaign) return res.status(404).json({ error: "Campaign not found" });
 
     res.json(campaign);
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    res.status(500).json({ error: "Something went wrong." });
   }
 });
 
@@ -137,7 +140,7 @@ router.get("/admin/donors/:campaignId", async (req, res) => {
     const campaign = await Campaign.findById(req.params.campaignId);
     res.json({ campaign: campaign?.title || "Unknown", donors });
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    res.status(500).json({ error: "Something went wrong." });
   }
 });
 
@@ -151,7 +154,7 @@ router.post("/admin/upload", upload.single("image"), async (req, res) => {
     const url = await uploadToCloudinary(req.file.buffer);
     res.json({ url });
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    res.status(500).json({ error: "Something went wrong." });
   }
 });
 
@@ -217,7 +220,99 @@ router.get("/admin/analytics", async (req, res) => {
       donorsByCampaign,
     });
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    res.status(500).json({ error: "Something went wrong." });
+  }
+});
+
+// Get payment settings (public)
+router.get("/settings/payment-mode", async (req, res) => {
+  try {
+    const setting = await Settings.findOne({ key: "paymentMode" });
+    const upiSetting = await Settings.findOne({ key: "upiDetails" });
+    const formSetting = await Settings.findOne({ key: "form80gUrl" });
+    res.json({
+      mode: setting?.value || "cashfree",
+      upiId: upiSetting?.value?.upiId || "",
+      qrImage: upiSetting?.value?.qrImage || "",
+      whatsappNo: upiSetting?.value?.whatsappNo || "",
+      form80gUrl: formSetting?.value || "",
+    });
+  } catch (err) {
+    res.status(500).json({ error: "Something went wrong." });
+  }
+});
+
+// Update payment settings (admin)
+router.post("/admin/settings/payment-mode", async (req, res) => {
+  try {
+    if (req.headers["x-admin-password"] !== process.env.ADMIN_PASSWORD) {
+      return res.status(401).json({ error: "Unauthorized." });
+    }
+    const { mode, upiId, qrImage, whatsappNo, form80gUrl } = req.body;
+    await Settings.findOneAndUpdate({ key: "paymentMode" }, { value: mode }, { upsert: true });
+    if (upiId || qrImage || whatsappNo) {
+      await Settings.findOneAndUpdate({ key: "upiDetails" }, { value: { upiId, qrImage, whatsappNo } }, { upsert: true });
+    }
+    if (form80gUrl !== undefined) {
+      await Settings.findOneAndUpdate({ key: "form80gUrl" }, { value: form80gUrl }, { upsert: true });
+    }
+    res.json({ message: "Settings updated." });
+  } catch (err) {
+    res.status(500).json({ error: "Something went wrong." });
+  }
+});
+
+// Get tier perks (admin)
+router.get("/admin/tier-perks", async (req, res) => {
+  try {
+    if (req.headers["x-admin-password"] !== process.env.ADMIN_PASSWORD) {
+      return res.status(401).json({ error: "Unauthorized." });
+    }
+    const setting = await Settings.findOne({ key: "tierPerks" });
+    res.json(setting?.value || { platinum: [], gold: [], silver: [], bronze: [] });
+  } catch (err) {
+    res.status(500).json({ error: "Something went wrong." });
+  }
+});
+
+// Update tier perks (admin)
+router.post("/admin/tier-perks", async (req, res) => {
+  try {
+    if (req.headers["x-admin-password"] !== process.env.ADMIN_PASSWORD) {
+      return res.status(401).json({ error: "Unauthorized." });
+    }
+    const { perks } = req.body;
+    await Settings.findOneAndUpdate({ key: "tierPerks" }, { value: perks }, { upsert: true });
+    res.json({ message: "Tier perks updated." });
+  } catch (err) {
+    res.status(500).json({ error: "Something went wrong." });
+  }
+});
+
+// Record manual donation (admin — for UPI/QR payments)
+router.post("/admin/manual-donation", async (req, res) => {
+  try {
+    if (req.headers["x-admin-password"] !== process.env.ADMIN_PASSWORD) {
+      return res.status(401).json({ error: "Unauthorized." });
+    }
+    const { campaignId, donorName, donorEmail, amount, transactionId } = req.body;
+    if (!campaignId || !donorName || !amount) return res.status(400).json({ error: "Campaign, name, and amount are required." });
+
+    await Donation.create({
+      campaignId,
+      donorName: donorName.replace(/<[^>]*>/g, "").trim(),
+      donorEmail: donorEmail || "",
+      amount: Number(amount),
+      orderId: transactionId || `manual_${Date.now()}`,
+      paymentId: "manual",
+      status: "paid",
+    });
+
+    await Campaign.findByIdAndUpdate(campaignId, { $inc: { collectedAmount: Number(amount) } });
+
+    res.json({ message: "Donation recorded." });
+  } catch (err) {
+    res.status(500).json({ error: "Something went wrong." });
   }
 });
 

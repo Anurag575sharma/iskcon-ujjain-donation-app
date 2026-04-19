@@ -30,14 +30,14 @@ function PublicNav() {
       <nav className="bg-white/95 backdrop-blur-lg border-b border-[#E8DCCF] sticky top-0 z-10 shadow-sm">
         <div className="max-w-6xl mx-auto px-6 py-3 flex justify-between items-center">
           <button onClick={() => navigate("/")} className="flex items-center gap-3 group">
-            <img src={LOGO} alt="Inspire MANIT" className="h-16 w-16 object-contain group-hover:scale-105 transition-transform rounded-lg" />
+            <img src={LOGO} alt="Inspire HELP" className="h-16 w-16 object-contain group-hover:scale-105 transition-transform rounded-lg" />
             <div className="text-left">
-              <span className="text-xl font-serif font-bold text-[#7B241C] block leading-tight tracking-wide">Inspire MANIT</span>
+              <span className="text-xl font-serif font-bold text-[#7B241C] block leading-tight tracking-wide">Inspire HELP</span>
               <span className="text-[10px] text-[#D35400] tracking-[0.2em] uppercase font-medium">Bhopal · Serving Humanity Through Devotion</span>
             </div>
           </button>
-          <a href="tel:+917692932955" className="hidden sm:flex items-center gap-2 text-sm font-medium text-[#D35400] hover:text-[#7B241C] bg-[#FDF2E9] hover:bg-[#FADBD8] px-5 py-2.5 rounded-full transition-all border border-[#E8DCCF]">
-            📞 +91 76929 32955
+          <a href="https://centers.iskcondesiretree.com/india/" target="_blank" rel="noopener noreferrer" className="hidden sm:flex items-center gap-2 text-sm font-medium text-[#D35400] hover:text-[#7B241C] bg-[#FDF2E9] hover:bg-[#FADBD8] px-5 py-2.5 rounded-full transition-all border border-[#E8DCCF]">
+            🛕 Find Nearby Centre
           </a>
         </div>
       </nav>
@@ -61,8 +61,8 @@ function PublicFooter() {
         </p>
         <div className="flex flex-col sm:flex-row justify-between items-center gap-1.5 text-xs text-[#5D6D7E]/60 pt-1">
           <div className="flex items-center gap-2">
-            <img src={LOGO} alt="Inspire MANIT" className="h-4 w-4 object-contain" />
-            <span>Inspire MANIT · Bhopal, MP</span>
+            <img src={LOGO} alt="Inspire HELP" className="h-4 w-4 object-contain" />
+            <span>Inspire HELP · Bhopal, MP</span>
           </div>
           <div className="flex items-center gap-3">
             <span>📞 +91 76929 32955</span>
@@ -107,7 +107,7 @@ function AdminPage() {
       <nav className="bg-white/95 backdrop-blur-lg border-b border-[#E8DCCF] sticky top-0 z-10 shadow-sm">
         <div className="max-w-6xl mx-auto px-6 py-3 flex justify-between items-center">
           <button onClick={() => navigate("/admin")} className="flex items-center gap-3">
-            <img src={LOGO} alt="Inspire MANIT" className="h-12 w-12 object-contain rounded-lg" />
+            <img src={LOGO} alt="Inspire HELP" className="h-12 w-12 object-contain rounded-lg" />
             <span className="text-lg font-serif font-bold text-[#7B241C]">Admin Panel</span>
           </button>
           <button onClick={() => navigate("/")} className="text-[#D35400] text-sm font-medium hover:text-[#7B241C] transition-colors">← Back to site</button>
