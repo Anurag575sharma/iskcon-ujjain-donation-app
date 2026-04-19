@@ -26,33 +26,22 @@ export default function CampaignDetail({ id, onBack }) {
       const { data: order } = await api.post("/create-order", {
         amount: val, campaignId: id, donorName: donorName.trim(), donorEmail: donorEmail.trim(),
       });
-      const options = {
-        key: import.meta.env.VITE_RAZORPAY_KEY_ID,
-        amount: order.amount, currency: order.currency,
-        name: campaign.title, description: "Donation to ISKCON Ujjain",
-        order_id: order.orderId,
-        prefill: { name: donorName.trim(), email: donorEmail.trim() },
-        handler: async (response) => {
-          try {
-            await api.post("/verify-payment", {
-              razorpay_order_id: response.razorpay_order_id,
-              razorpay_payment_id: response.razorpay_payment_id,
-              razorpay_signature: response.razorpay_signature,
-            });
-            setMessage("Hare Krishna! Thank you for your generous donation 🙏 A receipt has been sent to your email.");
-            setAmount(""); setDonorName(""); setDonorEmail("");
-            fetchCampaign(); fetchDonors();
-          } catch { setMessage("Payment verification failed."); }
-        },
-        theme: { color: "#D35400" },
-        method: { upi: true, card: true, netbanking: true, wallet: true },
-      };
-      const rzp = new window.Razorpay(options);
-      rzp.on("payment.failed", () => setMessage("Payment failed. Please try again."));
-      rzp.open();
+
+      const cashfree = window.Cashfree({
+        mode: import.meta.env.VITE_CASHFREE_ENV === "production" ? "production" : "sandbox",
+      });
+
+      await cashfree.checkout({
+        paymentSessionId: order.paymentSessionId,
+        redirectTarget: "_self",
+      });
+
+      // After redirect back, verify payment
     } catch { setMessage("Something went wrong."); }
     finally { setLoading(false); }
   };
+
+
 
   if (!campaign) return <Loader message="Loading campaign details..." />;
 
@@ -74,19 +63,19 @@ export default function CampaignDetail({ id, onBack }) {
             <h1 className="absolute bottom-5 left-6 right-6 text-2xl font-serif font-bold text-white drop-shadow-lg leading-tight tracking-wide">{campaign.title}</h1>
           </div>
 
-          <div className="p-6 space-y-5">
+          <div className="p-4 sm:p-6 space-y-5">
             <p className="text-[#5D6D7E] leading-relaxed">{campaign.description}</p>
 
             {/* Progress */}
-            <div className="bg-[#FDF2E9] rounded-2xl p-5 border border-[#E8DCCF]">
-              <div className="flex justify-between items-end mb-3">
-                <div>
+            <div className="bg-[#FDF2E9] rounded-2xl p-4 sm:p-5 border border-[#E8DCCF]">
+              <div className="flex justify-between items-end mb-3 gap-2">
+                <div className="min-w-0">
                   <p className="text-[10px] text-[#5D6D7E] uppercase tracking-[0.15em] font-semibold">Raised</p>
-                  <p className="text-2xl font-serif font-bold text-[#D35400]">₹{campaign.collectedAmount.toLocaleString("en-IN")}</p>
+                  <p className="text-xl sm:text-2xl font-serif font-bold text-[#D35400] truncate">₹{campaign.collectedAmount.toLocaleString("en-IN")}</p>
                 </div>
-                <div className="text-right">
+                <div className="text-right min-w-0">
                   <p className="text-[10px] text-[#5D6D7E] uppercase tracking-[0.15em] font-semibold">Goal</p>
-                  <p className="text-lg font-serif font-semibold text-[#7B241C]">₹{campaign.targetAmount.toLocaleString("en-IN")}</p>
+                  <p className="text-base sm:text-lg font-serif font-semibold text-[#7B241C] truncate">₹{campaign.targetAmount.toLocaleString("en-IN")}</p>
                 </div>
               </div>
               <div className="w-full bg-[#E8DCCF]/50 rounded-full h-3 overflow-hidden">
@@ -118,10 +107,17 @@ export default function CampaignDetail({ id, onBack }) {
                   </div>
                 </div>
 
-                <div className="grid grid-cols-4 gap-2">
-                  {[500, 1000, 2500, 5000].map((val) => (
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                  {(() => {
+                    const t = campaign.targetAmount;
+                    if (t <= 10000) return [101, 501, 1001, 2501];
+                    if (t <= 50000) return [1001, 2501, 5001, 11001];
+                    if (t <= 200000) return [5001, 11001, 21001, 51001];
+                    if (t <= 400000) return [11001, 21001, 51001, 100001];
+                    return [25001, 51001, 100001, 251001];
+                  })().map((val) => (
                     <button key={val} onClick={() => setAmount(String(val))}
-                      className={`py-2.5 text-sm font-semibold rounded-xl border-2 transition-all duration-200 ${
+                      className={`py-2.5 text-xs sm:text-sm font-semibold rounded-xl border-2 transition-all duration-200 ${
                         amount === String(val)
                           ? "border-[#D35400] bg-[#D35400] text-white shadow-md scale-105"
                           : "border-[#E8DCCF] text-[#D35400] hover:border-[#D35400] hover:bg-[#FDF2E9]"
@@ -131,20 +127,20 @@ export default function CampaignDetail({ id, onBack }) {
                   ))}
                 </div>
 
-                <div className="flex gap-3">
+                <div className="flex flex-col sm:flex-row gap-3">
                   <div className="relative flex-1">
                     <span className="absolute left-4 top-1/2 -translate-y-1/2 text-[#D35400] font-bold">₹</span>
                     <input type="number" min="1" placeholder="Custom amount" value={amount} onChange={(e) => setAmount(e.target.value)}
                       className="w-full pl-10 pr-4 py-3.5 border border-[#E8DCCF] rounded-xl bg-white focus:outline-none focus:ring-2 focus:ring-[#D35400] placeholder-[#BDC3C7] text-lg font-semibold text-[#17202A] transition-all" />
                   </div>
                   <button onClick={handleDonate} disabled={loading}
-                    className="px-7 py-3.5 text-white font-bold rounded-xl disabled:opacity-50 transition-all glow-btn text-lg"
+                    className="w-full sm:w-auto px-7 py-3.5 text-white font-bold rounded-xl disabled:opacity-50 transition-all glow-btn text-lg"
                     style={{ background: "linear-gradient(135deg, #D35400, #E67E22)" }}>
-                    {loading ? <div className="w-6 h-6 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : "Donate"}
+                    {loading ? <div className="w-6 h-6 border-2 border-white/30 border-t-white rounded-full animate-spin mx-auto" /> : "Help Now"}
                   </button>
                 </div>
 
-                <p className="text-center text-xs text-[#BDC3C7] flex items-center justify-center gap-2">🔒 Secured by Razorpay · 100% Safe</p>
+                <p className="text-center text-xs text-[#BDC3C7] flex items-center justify-center gap-2">🔒 Secured by Cashfree · 100% Safe</p>
               </div>
             )}
 
@@ -158,7 +154,7 @@ export default function CampaignDetail({ id, onBack }) {
             <div className="pt-2 border-t border-[#E8DCCF]">
               <p className="text-xs text-[#5D6D7E] text-center mb-2 font-medium">Share this campaign</p>
               <div className="flex justify-center gap-3">
-                <button onClick={() => { const text = `🙏 Support "${campaign.title}" at ISKCON Ujjain! Donate here: ${window.location.href}`; window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, "_blank"); }}
+                <button onClick={() => { const text = `🙏 Support "${campaign.title}" at Inspire MANIT Bhopal! Help here: ${window.location.href}`; window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, "_blank"); }}
                   className="flex items-center gap-1.5 px-4 py-2 bg-green-500 text-white text-sm font-medium rounded-full hover:bg-green-600 transition-all shadow-sm">💬 WhatsApp</button>
                 <button onClick={() => { navigator.clipboard.writeText(window.location.href); toast.success("Link copied!"); }}
                   className="flex items-center gap-1.5 px-4 py-2 bg-[#FDF2E9] text-[#D35400] text-sm font-medium rounded-full hover:bg-[#FADBD8] transition-all border border-[#E8DCCF]">🔗 Copy Link</button>

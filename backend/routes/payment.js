@@ -1,104 +1,143 @@
 const express = require("express");
 const crypto = require("crypto");
-const Razorpay = require("razorpay");
+const https = require("https");
 const router = express.Router();
 const Donation = require("../models/Donation");
 const Campaign = require("../models/Campaign");
 const { sendDonationReceipt } = require("../utils/mailer");
 
-const razorpay = new Razorpay({
-  key_id: process.env.RAZORPAY_KEY_ID,
-  key_secret: process.env.RAZORPAY_KEY_SECRET,
-});
+const CF_BASE = process.env.CASHFREE_ENV === "production"
+  ? "https://api.cashfree.com/pg"
+  : "https://sandbox.cashfree.com/pg";
 
-// Create Razorpay order
+// Helper to make Cashfree API calls
+function cashfreeRequest(method, path, body) {
+  return new Promise((resolve, reject) => {
+    const data = body ? JSON.stringify(body) : "";
+    const url = new URL(CF_BASE + path);
+    const options = {
+      hostname: url.hostname,
+      path: url.pathname,
+      method,
+      headers: {
+        "x-client-id": process.env.CASHFREE_APP_ID,
+        "x-client-secret": process.env.CASHFREE_SECRET_KEY,
+        "x-api-version": "2023-08-01",
+        "Content-Type": "application/json",
+        ...(data ? { "Content-Length": Buffer.byteLength(data) } : {}),
+      },
+    };
+
+    const req = https.request(options, (res) => {
+      let result = "";
+      res.on("data", (c) => (result += c));
+      res.on("end", () => {
+        try { resolve(JSON.parse(result)); }
+        catch { reject(new Error(result)); }
+      });
+    });
+    req.on("error", reject);
+    if (data) req.write(data);
+    req.end();
+  });
+}
+
+// Create Cashfree order
 router.post("/create-order", async (req, res) => {
   try {
     const { amount, campaignId, donorName, donorEmail } = req.body;
 
     if (!donorName || !campaignId) return res.status(400).json({ error: "Name and campaign are required." });
-    if (typeof donorName !== "string" || donorName.length > 100) return res.status(400).json({ error: "Invalid name." });
     if (!amount || amount < 1 || amount > 10000000) return res.status(400).json({ error: "Invalid amount." });
+    if (typeof donorName !== "string" || donorName.length > 100) return res.status(400).json({ error: "Invalid name." });
     if (donorEmail && (typeof donorEmail !== "string" || !donorEmail.includes("@"))) return res.status(400).json({ error: "Invalid email." });
 
-    // Sanitize name — strip HTML tags
     const safeName = donorName.replace(/<[^>]*>/g, "").trim();
 
-    // Check campaign exists and is not completed
     const campaign = await Campaign.findById(campaignId);
     if (!campaign) return res.status(404).json({ error: "Campaign not found." });
     if (campaign.collectedAmount >= campaign.targetAmount) return res.status(400).json({ error: "Campaign is fully funded." });
 
-    const options = {
-      amount: amount * 100,
-      currency: "INR",
-      receipt: `receipt_${Date.now()}`,
-    };
+    const orderId = `order_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
 
-    const order = await razorpay.orders.create(options);
+    const cfOrder = await cashfreeRequest("POST", "/orders", {
+      order_id: orderId,
+      order_amount: amount,
+      order_currency: "INR",
+      customer_details: {
+        customer_id: `donor_${Date.now()}`,
+        customer_name: safeName,
+        customer_email: donorEmail || "donor@example.com",
+        customer_phone: "9999999999",
+      },
+      order_meta: {
+        return_url: `${process.env.FRONTEND_URL || "http://localhost:5173"}/thank-you?order_id=${orderId}&campaign_id=${campaignId}`,
+      },
+    });
+
+    if (!cfOrder.payment_session_id) {
+      return res.status(500).json({ error: cfOrder.message || "Failed to create order." });
+    }
 
     await Donation.create({
       campaignId,
       donorName: safeName,
       donorEmail: donorEmail || "",
       amount,
-      razorpay_order_id: order.id,
+      razorpay_order_id: orderId,
       status: "created",
     });
 
-    res.json({ orderId: order.id, amount: order.amount, currency: order.currency });
+    res.json({
+      orderId,
+      paymentSessionId: cfOrder.payment_session_id,
+      amount,
+    });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
 });
 
-// Verify payment signature and update records
+// Verify payment status
 router.post("/verify-payment", async (req, res) => {
   try {
-    const { razorpay_order_id, razorpay_payment_id, razorpay_signature } = req.body;
+    const { orderId } = req.body;
 
-    if (!razorpay_order_id || !razorpay_payment_id || !razorpay_signature) {
-      return res.status(400).json({ error: "Missing payment details." });
+    if (!orderId) return res.status(400).json({ error: "Missing order ID." });
+
+    const cfOrder = await cashfreeRequest("GET", `/orders/${orderId}`, null);
+
+    if (cfOrder.order_status !== "PAID") {
+      return res.status(400).json({ error: "Payment not completed." });
     }
 
-    const body = razorpay_order_id + "|" + razorpay_payment_id;
-    const expectedSignature = crypto
-      .createHmac("sha256", process.env.RAZORPAY_KEY_SECRET)
-      .update(body)
-      .digest("hex");
+    // Check if already processed
+    const existing = await Donation.findOne({ razorpay_order_id: orderId, status: "paid" });
+    if (existing) return res.json({ message: "Payment already verified." });
 
-    if (expectedSignature !== razorpay_signature) {
-      return res.status(400).json({ error: "Invalid payment signature" });
-    }
-
-    // Find donation by order ID
     const donation = await Donation.findOneAndUpdate(
-      { razorpay_order_id, status: "created" },
-      { razorpay_payment_id, status: "paid" },
+      { razorpay_order_id: orderId, status: "created" },
+      { razorpay_payment_id: cfOrder.cf_order_id?.toString() || orderId, status: "paid" },
       { new: true }
     );
 
-    if (!donation) {
-      return res.status(404).json({ error: "Donation record not found." });
-    }
+    if (!donation) return res.status(404).json({ error: "Donation record not found." });
 
-    // Use campaignId from donation record, not from client
     const campaign = await Campaign.findByIdAndUpdate(donation.campaignId, {
       $inc: { collectedAmount: donation.amount },
     }, { new: true });
 
-    // Send receipt email only if email provided
     if (donation.donorEmail) {
       sendDonationReceipt({
         donorName: donation.donorName,
         donorEmail: donation.donorEmail,
         amount: donation.amount,
         campaignTitle: campaign.title,
-        paymentId: razorpay_payment_id,
+        paymentId: orderId,
       });
     }
 
-    res.json({ message: "Payment verified successfully" });
+    res.json({ message: "Payment verified successfully", emailSent: !!donation.donorEmail });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -120,15 +159,13 @@ router.get("/donors/:campaignId", async (req, res) => {
   }
 });
 
-// Recent donations from active (non-hidden, non-completed) campaigns only
+// Recent donations from active campaigns only
 router.get("/recent-donations", async (req, res) => {
   try {
-    // Get IDs of active campaigns
     const activeCampaigns = await Campaign.find({
       hidden: { $ne: true },
       $expr: { $lt: ["$collectedAmount", "$targetAmount"] },
     }).select("_id");
-
     const activeIds = activeCampaigns.map((c) => c._id);
 
     const donations = await Donation.find({ status: "paid", campaignId: { $in: activeIds } })
@@ -143,7 +180,7 @@ router.get("/recent-donations", async (req, res) => {
   }
 });
 
-// Donation stats — active campaigns only if ?active=true
+// Donation stats
 router.get("/stats", async (req, res) => {
   try {
     let match = { status: "paid" };
@@ -153,8 +190,7 @@ router.get("/stats", async (req, res) => {
         hidden: { $ne: true },
         $expr: { $lt: ["$collectedAmount", "$targetAmount"] },
       }).select("_id");
-      const activeIds = activeCampaigns.map((c) => c._id);
-      match.campaignId = { $in: activeIds };
+      match.campaignId = { $in: activeCampaigns.map((c) => c._id) };
     }
 
     const result = await Donation.aggregate([

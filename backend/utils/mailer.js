@@ -11,8 +11,8 @@ function buildHtml({ donorName, amount, campaignTitle, paymentId }) {
       </div>
       <div style="padding: 20px;">
         <p style="color: #5D6D7E; font-size: 14px; line-height: 1.6; margin: 0 0 16px;">
-          We are grateful for your kind contribution to <strong style="color: #7B241C;">${campaignTitle}</strong> at ISKCON Ujjain.
-          May Lord Krishna bless you abundantly for your seva.
+          We are grateful for your kind contribution to <strong style="color: #7B241C;">${campaignTitle}</strong>.
+          Your support helps us continue our mission of serving the community. Thank you for being a part of this journey.
         </p>
         <div style="background: #fff; border: 1px solid #E8DCCF; border-radius: 8px; padding: 14px; margin: 0 0 16px;">
           <p style="color: #7B241C; font-weight: bold; font-size: 14px; margin: 0 0 10px;">Donation Details</p>
@@ -28,8 +28,8 @@ function buildHtml({ donorName, amount, campaignTitle, paymentId }) {
         </p>
       </div>
       <div style="background: #7B241C; padding: 12px; text-align: center; color: #FADBD8; font-size: 11px;">
-        <p style="margin: 0;">ISKCON Ujjain · Sri Sri Radha Madanmohan Mandir</p>
-        <p style="margin: 3px 0 0;">📞 +91 76929 32955 · ✉️ info@iskconujjain.com</p>
+        <p style="margin: 0;">Inspire MANIT · Bhopal, MP</p>
+        <p style="margin: 3px 0 0;">📞 +91 76929 32955 · ✉️ inspiremanit@gmail.com</p>
       </div>
     </div>
   `;
@@ -39,7 +39,7 @@ function buildHtml({ donorName, amount, campaignTitle, paymentId }) {
 function sendViaResend({ donorName, donorEmail, amount, campaignTitle, paymentId }) {
   return new Promise((resolve, reject) => {
     const body = JSON.stringify({
-      from: "ISKCON Ujjain <onboarding@resend.dev>",
+      from: "Inspire MANIT <onboarding@resend.dev>",
       to: donorEmail,
       subject: `🙏 Hare Krishna! Donation Receipt – ₹${amount.toLocaleString("en-IN")}`,
       html: buildHtml({ donorName, amount, campaignTitle, paymentId }),
@@ -84,7 +84,7 @@ async function sendViaSmtp({ donorName, donorEmail, amount, campaignTitle, payme
     auth: { user: process.env.EMAIL_USER, pass: process.env.EMAIL_PASS },
   });
   await transporter.sendMail({
-    from: `"ISKCON Ujjain" <${process.env.EMAIL_USER}>`,
+    from: `"Inspire MANIT" <${process.env.EMAIL_USER}>`,
     to: donorEmail,
     subject: `🙏 Hare Krishna! Donation Receipt – ₹${amount.toLocaleString("en-IN")}`,
     html: buildHtml({ donorName, amount, campaignTitle, paymentId }),

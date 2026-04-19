@@ -4,11 +4,21 @@ const Campaign = require("../models/Campaign");
 const Donation = require("../models/Donation");
 const { upload, uploadToCloudinary } = require("../utils/cloudinary");
 
-// Get all visible campaigns (public)
+// Get all visible campaigns (public) with donor counts
 router.get("/campaigns", async (req, res) => {
   try {
-    const campaigns = await Campaign.find({ hidden: { $ne: true } }).sort({ createdAt: -1 });
-    res.json(campaigns);
+    const campaigns = await Campaign.find({ hidden: { $ne: true } }).sort({ createdAt: -1 }).lean();
+
+    // Get donor counts for each campaign
+    const donorCounts = await Donation.aggregate([
+      { $match: { status: "paid" } },
+      { $group: { _id: "$campaignId", donorCount: { $sum: 1 } } },
+    ]);
+    const countMap = {};
+    donorCounts.forEach((d) => { countMap[d._id.toString()] = d.donorCount; });
+
+    const result = campaigns.map((c) => ({ ...c, donorCount: countMap[c._id.toString()] || 0 }));
+    res.json(result);
   } catch (err) {
     res.status(500).json({ error: err.message });
   }

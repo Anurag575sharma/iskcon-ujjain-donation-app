@@ -328,8 +328,8 @@ export default function CreateCampaign() {
                 className="px-3 py-2 border border-amber-200 rounded-lg bg-amber-50/50 text-sm text-amber-800 focus:outline-none focus:ring-2 focus:ring-amber-400"
               >
                 <option value="all">All Campaigns</option>
-                {(analytics.donorsByCampaign || []).map((c) => (
-                  <option key={c.campaignId} value={c.campaignId}>{c.campaignTitle}</option>
+                {(analytics.topCampaigns || []).map((c) => (
+                  <option key={c._id} value={c._id}>{c.title}</option>
                 ))}
               </select>
             </div>

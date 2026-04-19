@@ -1,6 +1,6 @@
-# ISKCON Ujjain Donation Campaign App
+# Help Inspire MANIT Bhopal
 
-A donation campaign web app with Razorpay payment integration built for ISKCON Ujjain.
+A donation campaign web app with Cashfree payment integration built for Inspire MANIT Bhopal.
 
 ## Tech Stack
 

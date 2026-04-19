@@ -3,8 +3,9 @@ import { useState, useEffect } from "react";
 import Home from "./pages/Home";
 import CampaignDetail from "./pages/CampaignDetail";
 import CreateCampaign from "./pages/CreateCampaign";
+import ThankYou from "./pages/ThankYou";
 
-const ISKCON_LOGO = "https://iskconujjaindonation.com/wp-content/uploads/2023/12/cropped-MEHARUN_NEW-LOGO-ISKCON-1001x1024.png";
+const LOGO = "https://res.cloudinary.com/dqomft1xi/image/upload/v1776576409/iskcon-campaigns/bmetkjq2rhokxjuoysnz.jpg";
 
 const PRABHUPADA_QUOTES = [
   "If you simply give some contribution to spreading this Krishna consciousness movement, you get a permanent credit.",
@@ -29,10 +30,10 @@ function PublicNav() {
       <nav className="bg-white/95 backdrop-blur-lg border-b border-[#E8DCCF] sticky top-0 z-10 shadow-sm">
         <div className="max-w-6xl mx-auto px-6 py-3 flex justify-between items-center">
           <button onClick={() => navigate("/")} className="flex items-center gap-3 group">
-            <img src={ISKCON_LOGO} alt="ISKCON" className="h-12 w-12 object-contain group-hover:scale-105 transition-transform" />
+            <img src={LOGO} alt="Inspire MANIT" className="h-12 w-12 object-contain group-hover:scale-105 transition-transform" />
             <div className="text-left">
-              <span className="text-xl font-serif font-bold text-[#7B241C] block leading-tight tracking-wide">ISKCON Ujjain</span>
-              <span className="text-[10px] text-[#D35400] tracking-[0.2em] uppercase font-medium">Sri Sri Radha Madanmohan Mandir</span>
+              <span className="text-xl font-serif font-bold text-[#7B241C] block leading-tight tracking-wide">Inspire MANIT</span>
+              <span className="text-[10px] text-[#D35400] tracking-[0.2em] uppercase font-medium">Bhopal · Serving Humanity Through Devotion</span>
             </div>
           </button>
           <a href="tel:+917692932955" className="hidden sm:flex items-center gap-2 text-sm font-medium text-[#D35400] hover:text-[#7B241C] bg-[#FDF2E9] hover:bg-[#FADBD8] px-5 py-2.5 rounded-full transition-all border border-[#E8DCCF]">
@@ -60,12 +61,12 @@ function PublicFooter() {
         </p>
         <div className="flex flex-col sm:flex-row justify-between items-center gap-1.5 text-xs text-[#5D6D7E]/60 pt-1">
           <div className="flex items-center gap-2">
-            <img src={ISKCON_LOGO} alt="ISKCON" className="h-4 w-4 object-contain" />
-            <span>ISKCON Ujjain · Bharatpuri, MP – 456010</span>
+            <img src={LOGO} alt="Inspire MANIT" className="h-4 w-4 object-contain" />
+            <span>Inspire MANIT · Bhopal, MP</span>
           </div>
           <div className="flex items-center gap-3">
             <span>📞 +91 76929 32955</span>
-            <span>✉️ info@iskconujjain.com</span>
+            <span>✉️ inspiremanit@gmail.com</span>
           </div>
         </div>
       </div>
@@ -106,7 +107,7 @@ function AdminPage() {
       <nav className="bg-white/95 backdrop-blur-lg border-b border-[#E8DCCF] sticky top-0 z-10 shadow-sm">
         <div className="max-w-6xl mx-auto px-6 py-3 flex justify-between items-center">
           <button onClick={() => navigate("/admin")} className="flex items-center gap-3">
-            <img src={ISKCON_LOGO} alt="ISKCON" className="h-10 w-10 object-contain" />
+            <img src={LOGO} alt="Inspire MANIT" className="h-10 w-10 object-contain" />
             <span className="text-lg font-serif font-bold text-[#7B241C]">Admin Panel</span>
           </button>
           <button onClick={() => navigate("/")} className="text-[#D35400] text-sm font-medium hover:text-[#7B241C] transition-colors">← Back to site</button>
@@ -117,12 +118,23 @@ function AdminPage() {
   );
 }
 
+function ThankYouPage() {
+  return (
+    <div className="min-h-screen flex flex-col" style={{ background: "#FAF6F0" }}>
+      <PublicNav />
+      <div className="flex-1 max-w-6xl mx-auto px-6 py-8 w-full"><ThankYou /></div>
+      <PublicFooter />
+    </div>
+  );
+}
+
 function App() {
   return (
     <BrowserRouter>
       <Routes>
         <Route path="/" element={<HomePage />} />
         <Route path="/campaign/:id" element={<CampaignPage />} />
+        <Route path="/thank-you" element={<ThankYouPage />} />
         <Route path="/admin/*" element={<AdminPage />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
