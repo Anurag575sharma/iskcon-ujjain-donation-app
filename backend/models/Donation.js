@@ -5,8 +5,8 @@ const donationSchema = new mongoose.Schema({
   donorName: { type: String, required: true },
   donorEmail: { type: String, default: "" },
   amount: { type: Number, required: true },
-  razorpay_order_id: { type: String, required: true },
-  razorpay_payment_id: { type: String },
+  orderId: { type: String, required: true },
+  paymentId: { type: String },
   status: { type: String, enum: ["created", "paid", "failed"], default: "created" },
 }, { timestamps: true });
 

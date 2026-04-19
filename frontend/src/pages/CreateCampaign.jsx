@@ -103,7 +103,7 @@ export default function CreateCampaign() {
       const { campaign, donors } = data;
       if (!donors.length) { toast.info("No donors for this campaign."); return; }
       const csvHeaders = ["S.No", "Donor Name", "Email", "Amount (₹)", "Payment ID", "Order ID", "Date"];
-      const rows = donors.map((d, i) => [i + 1, d.donorName, d.donorEmail || "", d.amount, d.razorpay_payment_id || "", d.razorpay_order_id, new Date(d.createdAt).toLocaleDateString("en-IN")]);
+      const rows = donors.map((d, i) => [i + 1, d.donorName, d.donorEmail || "", d.amount, d.paymentId || "", d.orderId, new Date(d.createdAt).toLocaleDateString("en-IN")]);
       const csv = [csvHeaders, ...rows].map((r) => r.map((c) => `"${c}"`).join(",")).join("\n");
       const blob = new Blob([csv], { type: "text/csv" });
       const url = URL.createObjectURL(blob);

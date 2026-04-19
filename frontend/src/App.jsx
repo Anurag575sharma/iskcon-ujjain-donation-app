@@ -30,7 +30,7 @@ function PublicNav() {
       <nav className="bg-white/95 backdrop-blur-lg border-b border-[#E8DCCF] sticky top-0 z-10 shadow-sm">
         <div className="max-w-6xl mx-auto px-6 py-3 flex justify-between items-center">
           <button onClick={() => navigate("/")} className="flex items-center gap-3 group">
-            <img src={LOGO} alt="Inspire MANIT" className="h-12 w-12 object-contain group-hover:scale-105 transition-transform" />
+            <img src={LOGO} alt="Inspire MANIT" className="h-16 w-16 object-contain group-hover:scale-105 transition-transform rounded-lg" />
             <div className="text-left">
               <span className="text-xl font-serif font-bold text-[#7B241C] block leading-tight tracking-wide">Inspire MANIT</span>
               <span className="text-[10px] text-[#D35400] tracking-[0.2em] uppercase font-medium">Bhopal · Serving Humanity Through Devotion</span>
@@ -107,7 +107,7 @@ function AdminPage() {
       <nav className="bg-white/95 backdrop-blur-lg border-b border-[#E8DCCF] sticky top-0 z-10 shadow-sm">
         <div className="max-w-6xl mx-auto px-6 py-3 flex justify-between items-center">
           <button onClick={() => navigate("/admin")} className="flex items-center gap-3">
-            <img src={LOGO} alt="Inspire MANIT" className="h-10 w-10 object-contain" />
+            <img src={LOGO} alt="Inspire MANIT" className="h-12 w-12 object-contain rounded-lg" />
             <span className="text-lg font-serif font-bold text-[#7B241C]">Admin Panel</span>
           </button>
           <button onClick={() => navigate("/")} className="text-[#D35400] text-sm font-medium hover:text-[#7B241C] transition-colors">← Back to site</button>

@@ -13,7 +13,9 @@ export default function CampaignDetail({ id, onBack }) {
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState("");
 
-  const fetchCampaign = () => api.get(`/campaign/${id}`).then(({ data }) => setCampaign(data));
+  const fetchCampaign = () => api.get(`/campaign/${id}`)
+    .then(({ data }) => setCampaign(data))
+    .catch(() => setCampaign("not_found"));
   const fetchDonors = () => api.get(`/donors/${id}`).then(({ data }) => setDonors(data));
   useEffect(() => { fetchCampaign(); fetchDonors(); }, [id]);
 
@@ -37,13 +39,28 @@ export default function CampaignDetail({ id, onBack }) {
       });
 
       // After redirect back, verify payment
-    } catch { setMessage("Something went wrong."); }
+    } catch (err) {
+      setMessage(err?.response?.data?.error || "Something went wrong. Please try again.");
+    }
     finally { setLoading(false); }
   };
 
 
 
   if (!campaign) return <Loader message="Loading campaign details..." />;
+
+  if (campaign === "not_found") {
+    return (
+      <div className="max-w-md mx-auto text-center py-20 animate-fade-up">
+        <div className="text-6xl mb-4">🙏</div>
+        <h1 className="text-2xl font-serif font-bold text-[#7B241C] mb-2">Campaign Not Found</h1>
+        <p className="text-[#5D6D7E] mb-6">This campaign may have been removed or doesn't exist.</p>
+        <button onClick={onBack} className="px-6 py-3 text-white font-semibold rounded-xl glow-btn" style={{ background: "linear-gradient(135deg, #D35400, #E67E22)" }}>
+          Back to Home
+        </button>
+      </div>
+    );
+  }
 
   const progress = Math.min((campaign.collectedAmount / campaign.targetAmount) * 100, 100);
   const isCompleted = campaign.collectedAmount >= campaign.targetAmount;
@@ -58,7 +75,8 @@ export default function CampaignDetail({ id, onBack }) {
       <div className="max-w-xl mx-auto space-y-6">
         <div className="bg-white rounded-3xl shadow-xl overflow-hidden border border-[#E8DCCF]">
           <div className="relative h-64">
-            <img src={campaign.image} alt={campaign.title} className="w-full h-full object-cover" />
+            <img src={campaign.image} alt={campaign.title} className="w-full h-full object-cover"
+              onError={(e) => { e.target.src = "https://placehold.co/800x400/FDF2E9/D35400?text=🙏"; }} />
             <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/20 to-transparent" />
             <h1 className="absolute bottom-5 left-6 right-6 text-2xl font-serif font-bold text-white drop-shadow-lg leading-tight tracking-wide">{campaign.title}</h1>
           </div>

@@ -1,5 +1,4 @@
 const express = require("express");
-const crypto = require("crypto");
 const https = require("https");
 const router = express.Router();
 const Donation = require("../models/Donation");
@@ -10,7 +9,6 @@ const CF_BASE = process.env.CASHFREE_ENV === "production"
   ? "https://api.cashfree.com/pg"
   : "https://sandbox.cashfree.com/pg";
 
-// Helper to make Cashfree API calls
 function cashfreeRequest(method, path, body) {
   return new Promise((resolve, reject) => {
     const data = body ? JSON.stringify(body) : "";
@@ -27,7 +25,6 @@ function cashfreeRequest(method, path, body) {
         ...(data ? { "Content-Length": Buffer.byteLength(data) } : {}),
       },
     };
-
     const req = https.request(options, (res) => {
       let result = "";
       res.on("data", (c) => (result += c));
@@ -56,12 +53,11 @@ router.post("/create-order", async (req, res) => {
 
     const campaign = await Campaign.findById(campaignId);
     if (!campaign) return res.status(404).json({ error: "Campaign not found." });
-    if (campaign.collectedAmount >= campaign.targetAmount) return res.status(400).json({ error: "Campaign is fully funded." });
 
-    const orderId = `order_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+    const oid = `order_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
 
     const cfOrder = await cashfreeRequest("POST", "/orders", {
-      order_id: orderId,
+      order_id: oid,
       order_amount: amount,
       order_currency: "INR",
       customer_details: {
@@ -71,7 +67,7 @@ router.post("/create-order", async (req, res) => {
         customer_phone: "9999999999",
       },
       order_meta: {
-        return_url: `${process.env.FRONTEND_URL || "http://localhost:5173"}/thank-you?order_id=${orderId}&campaign_id=${campaignId}`,
+        return_url: `${process.env.FRONTEND_URL || "http://localhost:5173"}/thank-you?order_id=${oid}&campaign_id=${campaignId}`,
       },
     });
 
@@ -84,15 +80,11 @@ router.post("/create-order", async (req, res) => {
       donorName: safeName,
       donorEmail: donorEmail || "",
       amount,
-      razorpay_order_id: orderId,
+      orderId: oid,
       status: "created",
     });
 
-    res.json({
-      orderId,
-      paymentSessionId: cfOrder.payment_session_id,
-      amount,
-    });
+    res.json({ orderId: oid, paymentSessionId: cfOrder.payment_session_id, amount });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -102,26 +94,28 @@ router.post("/create-order", async (req, res) => {
 router.post("/verify-payment", async (req, res) => {
   try {
     const { orderId } = req.body;
-
     if (!orderId) return res.status(400).json({ error: "Missing order ID." });
+    if (!/^[a-zA-Z0-9_-]+$/.test(orderId)) return res.status(400).json({ error: "Invalid order ID format." });
 
     const cfOrder = await cashfreeRequest("GET", `/orders/${orderId}`, null);
+    if (!cfOrder || cfOrder.order_status !== "PAID") return res.status(400).json({ error: "Payment not completed." });
 
-    if (cfOrder.order_status !== "PAID") {
-      return res.status(400).json({ error: "Payment not completed." });
-    }
+    const existing = await Donation.findOne({ orderId, status: "paid" });
+    if (existing) return res.json({ message: "Payment already verified.", emailSent: !!existing.donorEmail });
 
-    // Check if already processed
-    const existing = await Donation.findOne({ razorpay_order_id: orderId, status: "paid" });
-    if (existing) return res.json({ message: "Payment already verified." });
-
+    // Atomic update — only one request can change status from "created" to "paid"
     const donation = await Donation.findOneAndUpdate(
-      { razorpay_order_id: orderId, status: "created" },
-      { razorpay_payment_id: cfOrder.cf_order_id?.toString() || orderId, status: "paid" },
+      { orderId, status: "created" },
+      { paymentId: cfOrder.cf_order_id?.toString() || orderId, status: "paid" },
       { new: true }
     );
+    if (!donation) return res.json({ message: "Payment already verified." });
 
-    if (!donation) return res.status(404).json({ error: "Donation record not found." });
+    if (Number(cfOrder.order_amount) !== donation.amount) {
+      await Donation.findByIdAndUpdate(donation._id, { status: "created", paymentId: null });
+      console.error("Payment amount mismatch detected");
+      return res.status(400).json({ error: "Amount mismatch detected." });
+    }
 
     const campaign = await Campaign.findByIdAndUpdate(donation.campaignId, {
       $inc: { collectedAmount: donation.amount },
@@ -143,7 +137,7 @@ router.post("/verify-payment", async (req, res) => {
   }
 });
 
-// Get top donors for a campaign (aggregated by name)
+// Top donors for a campaign
 router.get("/donors/:campaignId", async (req, res) => {
   try {
     const donors = await Donation.aggregate([
@@ -159,7 +153,7 @@ router.get("/donors/:campaignId", async (req, res) => {
   }
 });
 
-// Recent donations from active campaigns only
+// Recent donations from active campaigns
 router.get("/recent-donations", async (req, res) => {
   try {
     const activeCampaigns = await Campaign.find({
@@ -167,13 +161,10 @@ router.get("/recent-donations", async (req, res) => {
       $expr: { $lt: ["$collectedAmount", "$targetAmount"] },
     }).select("_id");
     const activeIds = activeCampaigns.map((c) => c._id);
-
     const donations = await Donation.find({ status: "paid", campaignId: { $in: activeIds } })
-      .sort({ createdAt: -1 })
-      .limit(10)
+      .sort({ createdAt: -1 }).limit(10)
       .select("donorName amount createdAt campaignId")
       .populate("campaignId", "title");
-
     res.json(donations);
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -184,7 +175,6 @@ router.get("/recent-donations", async (req, res) => {
 router.get("/stats", async (req, res) => {
   try {
     let match = { status: "paid" };
-
     if (req.query.active === "true") {
       const activeCampaigns = await Campaign.find({
         hidden: { $ne: true },
@@ -192,7 +182,6 @@ router.get("/stats", async (req, res) => {
       }).select("_id");
       match.campaignId = { $in: activeCampaigns.map((c) => c._id) };
     }
-
     const result = await Donation.aggregate([
       { $match: match },
       { $group: { _id: null, totalAmount: { $sum: "$amount" }, totalDonors: { $sum: 1 } } },

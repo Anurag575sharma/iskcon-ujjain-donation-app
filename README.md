@@ -7,9 +7,9 @@ A donation campaign web app with Cashfree payment integration built for Inspire 
 - React + Vite + Tailwind CSS
 - Node.js + Express
 - MongoDB Atlas + Mongoose
-- Razorpay Payments
+- Cashfree Payments
 - Cloudinary (image upload)
-- Resend / Gmail SMTP (email receipts)
+- Gmail SMTP (email receipts)
 
 ## Local Development
 
@@ -45,13 +45,13 @@ Go to http://localhost:5173/admin
 |----------|----------|-------------|
 | `PORT` | No | Server port (default: 5000) |
 | `MONGODB_URI` | Yes | MongoDB Atlas connection string |
-| `RAZORPAY_KEY_ID` | Yes | Razorpay Key ID (`rzp_test_` for test, `rzp_live_` for production) |
-| `RAZORPAY_KEY_SECRET` | Yes | Razorpay Key Secret |
+| `CASHFREE_APP_ID` | Yes | Cashfree App ID |
+| `CASHFREE_SECRET_KEY` | Yes | Cashfree Secret Key |
+| `CASHFREE_ENV` | Yes | `sandbox` for test, `production` for live |
 | `ADMIN_PASSWORD` | Yes | Password for admin panel access |
-| `FRONTEND_URL` | No | Comma-separated allowed origins for CORS (e.g. `https://iskconujjain.com,https://www.iskconujjain.com`). Defaults to `*` |
+| `FRONTEND_URL` | No | Comma-separated allowed origins for CORS. Defaults to `*` |
 | `EMAIL_USER` | No | Gmail address for SMTP email receipts |
 | `EMAIL_PASS` | No | Gmail App Password for SMTP |
-| `RESEND_API_KEY` | No | Resend API key (fallback if SMTP unavailable) |
 | `CLOUDINARY_CLOUD_NAME` | No | Cloudinary cloud name for image uploads |
 | `CLOUDINARY_API_KEY` | No | Cloudinary API key |
 | `CLOUDINARY_API_SECRET` | No | Cloudinary API secret |
@@ -60,37 +60,35 @@ Go to http://localhost:5173/admin
 
 | Variable | Required | Description |
 |----------|----------|-------------|
-| `VITE_RAZORPAY_KEY_ID` | Yes | Razorpay Key ID (same as backend) |
-| `VITE_API_URL` | No | Backend API URL. Leave empty for local dev (Vite proxy handles it). For production: `https://your-backend.onrender.com/api` |
+| `VITE_CASHFREE_ENV` | Yes | `sandbox` for test, `production` for live |
+| `VITE_API_URL` | No | Backend API URL. Leave empty for local dev. For production: `https://your-backend.onrender.com/api` |
 
 ## Deployment
 
-### Backend → Render (free)
+### Backend → Render
 
-1. Push `backend/` to GitHub
+1. Push to GitHub
 2. Render → New Web Service → connect repo
 3. Root Directory: `backend`
 4. Build Command: `npm install`
 5. Start Command: `node server.js`
-6. Add all backend env vars in Environment tab
+6. Add all backend env vars
 
-### Frontend → Vercel (free)
+### Frontend → Vercel
 
-1. Push `frontend/` to GitHub
-2. Vercel → Import Project → connect repo
-3. Root Directory: `frontend`
-4. Framework Preset: Vite
-5. Add frontend env vars in Environment Variables
-6. Set `VITE_API_URL` to your Render backend URL + `/api`
+1. Import project from GitHub
+2. Root Directory: `frontend`
+3. Framework Preset: Vite
+4. Add frontend env vars
+5. Whitelist your Vercel domain on Cashfree dashboard
 
 ### Post-Deployment Checklist
 
-- [ ] Change `ADMIN_PASSWORD` from `admin123` to something strong
-- [ ] Switch Razorpay from test keys to live keys
-- [ ] Set `FRONTEND_URL` in backend to your actual domain(s)
-- [ ] Tighten MongoDB Atlas IP allowlist to Render server IP
-- [ ] Verify domain on Resend for branded emails
-- [ ] Connect custom domain on Vercel
+- [ ] Change `ADMIN_PASSWORD` to something strong
+- [ ] Switch Cashfree to production keys
+- [ ] Set `FRONTEND_URL` to your actual domain(s)
+- [ ] Tighten MongoDB Atlas IP allowlist
+- [ ] Whitelist domain on Cashfree dashboard
 
 ## API Endpoints
 
@@ -101,9 +99,10 @@ Go to http://localhost:5173/admin
 | GET | /api/donors/:campaignId | Public | Top donors (aggregated) |
 | GET | /api/recent-donations | Public | Last 10 donations |
 | GET | /api/stats | Public | Total raised + donor count |
-| POST | /api/create-order | Public | Create Razorpay order |
+| POST | /api/create-order | Public | Create Cashfree order |
 | POST | /api/verify-payment | Public | Verify payment + update |
 | POST | /api/campaign | Admin | Create campaign |
+| PUT | /api/campaign/:id | Admin | Edit campaign |
 | PATCH | /api/campaign/:id/toggle-hide | Admin | Show/hide campaign |
 | DELETE | /api/campaign/:id | Admin | Delete campaign |
 | GET | /api/admin/campaigns | Admin | All campaigns (inc. hidden) |
