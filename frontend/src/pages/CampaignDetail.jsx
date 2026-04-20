@@ -162,9 +162,13 @@ export default function CampaignDetail({ id, onBack }) {
                   <p className="text-[10px] text-[#5D6D7E] uppercase tracking-[0.15em] font-semibold">Raised</p>
                   <p className="text-xl sm:text-2xl font-serif font-bold text-[#D35400] truncate">₹{campaign.collectedAmount.toLocaleString("en-IN")}</p>
                 </div>
+                <div className="text-center min-w-0">
+                  <p className="text-[10px] text-[#5D6D7E] uppercase tracking-[0.15em] font-semibold">Remaining</p>
+                  <p className="text-base sm:text-lg font-serif font-semibold text-[#7B241C] truncate">₹{Math.max(campaign.targetAmount - campaign.collectedAmount, 0).toLocaleString("en-IN")}</p>
+                </div>
                 <div className="text-right min-w-0">
                   <p className="text-[10px] text-[#5D6D7E] uppercase tracking-[0.15em] font-semibold">Goal</p>
-                  <p className="text-base sm:text-lg font-serif font-semibold text-[#7B241C] truncate">₹{campaign.targetAmount.toLocaleString("en-IN")}</p>
+                  <p className="text-base sm:text-lg font-serif font-semibold text-[#5D6D7E] truncate">₹{campaign.targetAmount.toLocaleString("en-IN")}</p>
                 </div>
               </div>
               <div className="w-full bg-[#E8DCCF]/50 rounded-full h-3 overflow-hidden">

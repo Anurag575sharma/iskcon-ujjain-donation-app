@@ -106,6 +106,34 @@ export default function ThankYou() {
           </a>
         </div>
       )}
+
+      {/* Share Campaign */}
+      {campaignId && (
+        <div className="mt-4 bg-white rounded-2xl p-4 border border-[#E8DCCF]">
+          <p className="text-sm text-[#5D6D7E] mb-3">Spread the word — help us reach more people</p>
+          <div className="flex justify-center gap-3">
+            <button onClick={() => {
+              const link = `${window.location.origin}/campaign/${campaignId}`;
+              const text = `🙏 I just contributed to a wonderful cause! You can help too:\n\n👉 ${link}`;
+              window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, "_blank");
+            }}
+              className="flex items-center gap-1.5 px-4 py-2 bg-green-500 text-white text-sm font-medium rounded-full hover:bg-green-600 transition-all shadow-sm">
+              💬 WhatsApp
+            </button>
+            <button onClick={() => {
+              navigator.clipboard.writeText(`${window.location.origin}/campaign/${campaignId}`);
+              // toast not available here, use inline feedback
+              const btn = document.activeElement;
+              const orig = btn.textContent;
+              btn.textContent = "✅ Copied!";
+              setTimeout(() => { btn.textContent = orig; }, 2000);
+            }}
+              className="flex items-center gap-1.5 px-4 py-2 bg-[#FDF2E9] text-[#D35400] text-sm font-medium rounded-full hover:bg-[#FADBD8] transition-all border border-[#E8DCCF]">
+              🔗 Copy Link
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

@@ -121,8 +121,8 @@ export default function Home({ onSelect }) {
                       <div className="h-2.5 rounded-full transition-all duration-1000" style={{ width: `${progress}%`, background: "linear-gradient(90deg, #D35400, #E67E22)" }} />
                     </div>
                     <div className="flex justify-between text-sm">
-                      <span className="font-bold text-[#D35400]">₹{c.collectedAmount.toLocaleString("en-IN")}</span>
-                      <span className="text-[#5D6D7E]">{c.donorCount} {c.donorCount === 1 ? "donor" : "donors"}</span>
+                      <span className="font-bold text-[#D35400]">₹{c.collectedAmount.toLocaleString("en-IN")} raised</span>
+                      <span className="text-[#7B241C] font-medium">₹{Math.max(c.targetAmount - c.collectedAmount, 0).toLocaleString("en-IN")} left</span>
                     </div>
                   </div>
                   <div className="pt-2 border-t border-[#E8DCCF]">
