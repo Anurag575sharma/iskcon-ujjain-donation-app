@@ -127,16 +127,21 @@ export default function CampaignDetail({ id, onBack }) {
                 onMouseLeave={() => { mouseStart.dragging = false; }}>
                 <img src={allImages[slideIndex] || campaign.image} alt={campaign.title} className="w-full h-full object-contain transition-opacity duration-700"
                   onError={(e) => { e.target.src = "https://placehold.co/800x400/FDF2E9/D35400?text=🙏"; }} />
-                <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/20 to-transparent" />
                 {allImages.length > 1 && (
                   <span className="absolute top-3 right-3 bg-black/40 backdrop-blur-sm text-white text-xs font-medium px-2.5 py-1 rounded-full">
                     {slideIndex + 1} / {allImages.length}
                   </span>
                 )}
-                <h1 className="absolute bottom-5 left-6 right-6 text-2xl font-serif font-bold text-white drop-shadow-lg leading-tight tracking-wide">{campaign.title}</h1>
               </div>
             );
           })()}
+
+          <div className="px-4 sm:px-6 pt-5 pb-1">
+            <div className="flex items-start gap-3">
+              <div className="w-1 self-stretch bg-gradient-to-b from-[#D35400] to-[#E67E22] rounded-full flex-shrink-0" />
+              <h1 className="text-2xl font-serif font-bold text-[#7B241C] leading-tight tracking-wide">{campaign.title}</h1>
+            </div>
+          </div>
           </div>
 
           <div className="p-4 sm:p-6 space-y-5">

@@ -53,29 +53,20 @@ router.post("/record-upi-donation", async (req, res) => {
     const campaign = await Campaign.findById(campaignId);
     if (!campaign) return res.status(404).json({ error: "Campaign not found." });
 
+    // Record as pending — admin will verify and approve from admin panel
     await Donation.create({
       campaignId,
       donorName: safeName,
       donorEmail: donorEmail || "",
       amount: Number(amount),
       orderId: `upi_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
-      paymentId: "upi",
-      status: "paid",
+      paymentId: "upi_pending",
+      status: "created",
     });
 
-    await Campaign.findByIdAndUpdate(campaignId, { $inc: { collectedAmount: Number(amount) } });
+    // No auto-increment — admin verifies via WhatsApp screenshot and records manually
 
-    if (donorEmail) {
-      sendDonationReceipt({
-        donorName: safeName,
-        donorEmail,
-        amount: Number(amount),
-        campaignTitle: campaign.title,
-        paymentId: "UPI Payment",
-      });
-    }
-
-    res.json({ message: "Donation recorded." });
+    res.json({ message: "Donation submitted for verification." });
   } catch (err) {
     res.status(500).json({ error: "Something went wrong." });
   }

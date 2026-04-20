@@ -18,6 +18,10 @@ export default function CreateCampaign() {
   const [donorFilter, setDonorFilter] = useState("all");
   const [editingId, setEditingId] = useState(null);
   const [editForm, setEditForm] = useState({ title: "", description: "", image: "", targetAmount: "" });
+  const [editAmountId, setEditAmountId] = useState(null);
+  const [editAmountVal, setEditAmountVal] = useState("");
+  const [viewDonorsId, setViewDonorsId] = useState(null);
+  const [viewDonorsList, setViewDonorsList] = useState([]);
   const [tab, setTab] = useState("campaigns");
   const [payMode, setPayMode] = useState("cashfree");
   const [upiId, setUpiId] = useState("");
@@ -30,6 +34,7 @@ export default function CreateCampaign() {
   const [confirmDelete80g, setConfirmDelete80g] = useState(false);
   const [editingUpi, setEditingUpi] = useState(false);
   const [manualDonation, setManualDonation] = useState({ campaignId: "", donorName: "", donorEmail: "", amount: "", transactionId: "" });
+  const [pendingDonations, setPendingDonations] = useState([]);
   const [tierPerks, setTierPerks] = useState({ platinum: [], gold: [], silver: [], bronze: [] });
   const [editingTierPerks, setEditingTierPerks] = useState(false);
   const [perkInput, setPerkInput] = useState({ platinum: "", gold: "", silver: "", bronze: "" });
@@ -104,6 +109,26 @@ export default function CreateCampaign() {
       fetchCampaigns();
       toast.success("Donation recorded!");
     } catch (err) { toast.error(err.response?.data?.error || "Failed."); }
+  };
+
+  const fetchPendingDonations = () => {
+    api.get("/admin/pending-donations", { headers }).then(({ data }) => setPendingDonations(data)).catch(() => {});
+  };
+
+  const approveDonation = async (id) => {
+    try {
+      await api.post(`/admin/approve-donation/${id}`, {}, { headers });
+      fetchPendingDonations(); fetchCampaigns();
+      toast.success("Donation approved!");
+    } catch { toast.error("Failed to approve."); }
+  };
+
+  const rejectDonation = async (id) => {
+    try {
+      await api.delete(`/admin/reject-donation/${id}`, { headers });
+      fetchPendingDonations();
+      toast.success("Donation rejected.");
+    } catch { toast.error("Failed to reject."); }
   };
 
   const fetchTierPerks = () => {
@@ -213,6 +238,33 @@ export default function CreateCampaign() {
     } catch (err) { toast.error(err.response?.data?.error || "Failed to update."); }
   };
 
+  const updateCampaignAmount = async (id) => {
+    try {
+      await api.patch(`/admin/campaign/${id}/amount`, { collectedAmount: Number(editAmountVal) }, { headers });
+      setEditAmountId(null); setEditAmountVal("");
+      fetchCampaigns();
+      toast.success("Amount updated.");
+    } catch { toast.error("Failed to update amount."); }
+  };
+
+  const loadDonors = async (campaignId) => {
+    if (viewDonorsId === campaignId) { setViewDonorsId(null); return; }
+    try {
+      const { data } = await api.get(`/admin/donors/${campaignId}`, { headers });
+      setViewDonorsList(data.donors);
+      setViewDonorsId(campaignId);
+    } catch { toast.error("Failed to load donors."); }
+  };
+
+  const deleteDonation = async (donationId) => {
+    try {
+      await api.delete(`/admin/donation/${donationId}`, { headers });
+      loadDonors(viewDonorsId);
+      fetchCampaigns();
+      toast.success("Donation deleted.");
+    } catch { toast.error("Failed to delete."); }
+  };
+
   const downloadDonors = async (campaignId) => {
     try {
       const { data } = await api.get(`/admin/donors/${campaignId}`, { headers });
@@ -253,7 +305,7 @@ export default function CreateCampaign() {
       {/* Tabs */}
       <div className="flex gap-2 flex-wrap">
         {["campaigns", "settings", "tiers", "analytics"].map((t) => (
-          <button key={t} onClick={() => { setTab(t); if (t === "analytics" || t === "tiers") fetchAnalytics(); if (t === "tiers") fetchTierPerks(); if (t === "settings") fetchSettings(); }}
+          <button key={t} onClick={() => { setTab(t); if (t === "analytics" || t === "tiers") fetchAnalytics(); if (t === "tiers") fetchTierPerks(); if (t === "settings") { fetchSettings(); fetchPendingDonations(); } }}
             className={`px-5 py-2 rounded-full text-sm font-semibold transition-all ${
               tab === t ? "bg-amber-700 text-white shadow-md" : "bg-white text-amber-700 border border-amber-200 hover:bg-amber-50"
             }`}>
@@ -544,6 +596,37 @@ export default function CreateCampaign() {
                     </button>
                   )}
                 </div>
+              </div>
+            )}
+          </div>
+
+          {/* Pending UPI Donations */}
+          <div className="bg-white rounded-2xl shadow-md p-5 border border-amber-100 space-y-3">
+            <div className="flex justify-between items-center">
+              <h3 className="font-serif font-bold text-amber-900">⏳ Pending UPI Donations</h3>
+              {pendingDonations.length > 0 && (
+                <span className="bg-red-100 text-red-600 text-xs font-bold px-2.5 py-1 rounded-full">{pendingDonations.length}</span>
+              )}
+            </div>
+            {!pendingDonations.length ? (
+              <p className="text-[#5D6D7E] text-sm text-center py-3">No pending donations.</p>
+            ) : (
+              <div className="space-y-2">
+                {pendingDonations.map((d) => (
+                  <div key={d._id} className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 p-3 bg-amber-50 rounded-xl border border-amber-200">
+                    <div>
+                      <p className="font-medium text-amber-900">{d.donorName} — <span className="text-[#D35400] font-bold">₹{d.amount.toLocaleString("en-IN")}</span></p>
+                      <p className="text-xs text-[#5D6D7E]">{d.campaignId?.title || "Campaign"} · {new Date(d.createdAt).toLocaleString("en-IN")}</p>
+                      {d.donorEmail && <p className="text-xs text-[#5D6D7E]">✉️ {d.donorEmail}</p>}
+                    </div>
+                    <div className="flex gap-2">
+                      <button onClick={() => approveDonation(d._id)}
+                        className="px-3 py-1.5 text-xs font-medium rounded-lg bg-green-500 text-white hover:bg-green-600 transition">✅ Approve</button>
+                      <button onClick={() => rejectDonation(d._id)}
+                        className="px-3 py-1.5 text-xs font-medium rounded-lg border border-red-300 text-red-600 hover:bg-red-50 transition">❌ Reject</button>
+                    </div>
+                  </div>
+                ))}
               </div>
             )}
           </div>

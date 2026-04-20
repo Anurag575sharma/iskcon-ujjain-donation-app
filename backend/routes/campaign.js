@@ -316,4 +316,101 @@ router.post("/admin/manual-donation", async (req, res) => {
   }
 });
 
+// Get pending UPI donations (admin)
+router.get("/admin/pending-donations", async (req, res) => {
+  try {
+    if (req.headers["x-admin-password"] !== process.env.ADMIN_PASSWORD) {
+      return res.status(401).json({ error: "Unauthorized." });
+    }
+    const donations = await Donation.find({ status: "created", paymentId: "upi_pending" })
+      .sort({ createdAt: -1 })
+      .populate("campaignId", "title");
+    res.json(donations);
+  } catch (err) {
+    res.status(500).json({ error: "Something went wrong." });
+  }
+});
+
+// Approve pending UPI donation (admin)
+router.post("/admin/approve-donation/:id", async (req, res) => {
+  try {
+    if (req.headers["x-admin-password"] !== process.env.ADMIN_PASSWORD) {
+      return res.status(401).json({ error: "Unauthorized." });
+    }
+    const donation = await Donation.findOneAndUpdate(
+      { _id: req.params.id, status: "created", paymentId: "upi_pending" },
+      { status: "paid", paymentId: "upi_approved" },
+      { new: true }
+    );
+    if (!donation) return res.status(404).json({ error: "Donation not found or already approved." });
+
+    await Campaign.findByIdAndUpdate(donation.campaignId, { $inc: { collectedAmount: donation.amount } });
+
+    if (donation.donorEmail) {
+      const { sendDonationReceipt } = require("../utils/mailer");
+      const campaign = await Campaign.findById(donation.campaignId);
+      sendDonationReceipt({
+        donorName: donation.donorName,
+        donorEmail: donation.donorEmail,
+        amount: donation.amount,
+        campaignTitle: campaign?.title || "Campaign",
+        paymentId: "UPI Payment",
+      });
+    }
+
+    res.json({ message: "Donation approved." });
+  } catch (err) {
+    res.status(500).json({ error: "Something went wrong." });
+  }
+});
+
+// Reject/delete pending UPI donation (admin)
+router.delete("/admin/reject-donation/:id", async (req, res) => {
+  try {
+    if (req.headers["x-admin-password"] !== process.env.ADMIN_PASSWORD) {
+      return res.status(401).json({ error: "Unauthorized." });
+    }
+    const donation = await Donation.findOneAndDelete({ _id: req.params.id, status: "created", paymentId: "upi_pending" });
+    if (!donation) return res.status(404).json({ error: "Donation not found." });
+    res.json({ message: "Donation rejected." });
+  } catch (err) {
+    res.status(500).json({ error: "Something went wrong." });
+  }
+});
+
+// Delete any paid donation and deduct from campaign (admin)
+router.delete("/admin/donation/:id", async (req, res) => {
+  try {
+    if (req.headers["x-admin-password"] !== process.env.ADMIN_PASSWORD) {
+      return res.status(401).json({ error: "Unauthorized." });
+    }
+    const donation = await Donation.findByIdAndDelete(req.params.id);
+    if (!donation) return res.status(404).json({ error: "Donation not found." });
+
+    if (donation.status === "paid") {
+      await Campaign.findByIdAndUpdate(donation.campaignId, { $inc: { collectedAmount: -donation.amount } });
+    }
+    res.json({ message: "Donation deleted." });
+  } catch (err) {
+    res.status(500).json({ error: "Something went wrong." });
+  }
+});
+
+// Update campaign collected amount manually (admin)
+router.patch("/admin/campaign/:id/amount", async (req, res) => {
+  try {
+    if (req.headers["x-admin-password"] !== process.env.ADMIN_PASSWORD) {
+      return res.status(401).json({ error: "Unauthorized." });
+    }
+    const { collectedAmount } = req.body;
+    if (collectedAmount === undefined || collectedAmount < 0) return res.status(400).json({ error: "Invalid amount." });
+
+    const campaign = await Campaign.findByIdAndUpdate(req.params.id, { collectedAmount: Number(collectedAmount) }, { new: true });
+    if (!campaign) return res.status(404).json({ error: "Campaign not found." });
+    res.json(campaign);
+  } catch (err) {
+    res.status(500).json({ error: "Something went wrong." });
+  }
+});
+
 module.exports = router;

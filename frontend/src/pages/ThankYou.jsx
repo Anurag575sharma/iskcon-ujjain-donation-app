@@ -64,6 +64,11 @@ export default function ThankYou() {
       <p className="text-[#5D6D7E] mb-2">
         Your contribution makes a real difference. May Lord Krishna bless you abundantly.
       </p>
+      {!orderId && (
+        <p className="text-[#D35400] text-sm bg-[#FDF2E9] rounded-xl px-4 py-2 mb-2 border border-[#E8DCCF]">
+          ⏳ Your donation will be visible on the website after verification.
+        </p>
+      )}
       {emailSent && (
         <p className="text-[#5D6D7E] text-sm mb-6">📧 A receipt has been sent to your email.</p>
       )}
